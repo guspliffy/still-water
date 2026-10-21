@@ -16,7 +16,7 @@ Read the pond, hover or hold to aim, drop stones, watch the rings and the lanter
 ## §3 Mechanics
 - §3.1 **Stone.** Tap (mouse: press; touch: release, so holding shows a preview). Spends one stone. Refused on rocks or outside the pond with a dry "tock". Key: `stones.spare` (stones = par + spare).
 - §3.2 **Ring.** Expands at `ripple.speed` u/s to `ripple.maxRadius`, fading with `ripple.fadePower`. Hit time is analytic: t0 + distance / speed.
-- §3.3 **Lanterns.** Plain: lights on any ring. Echo (outer ring marker): lights and, after `ripple.echoDelay`, sends a smaller ring (`ripple.echoMaxRadius`). Gold (diamond): lights when two different rings pass it within `gold.window` seconds.
+- §3.3 **Lanterns.** Plain: lights on any ring. Echo (blue hexagon that pings): lights and, after `ripple.echoDelay`, sends a smaller ring (`ripple.echoMaxRadius`). Gold (diamond): lights when two different rings pass it within `gold.window` seconds.
 - §3.4 **Rocks** block rings; the ring is drawn with a gap behind the rock (its shadow), and lanterns in the shadow are not hit.
 - §3.5 **End.** All lanterns lit: complete. Out of stones and no ring moving: "the water settles", instant retry. Stars: 3 at or under par, 2 at par+1, else 1.
 - §3.6 **Adaptive difficulty.** After the tutorial, ponds are generated per index and difficulty 1 to 10 (`generator.*`). Clean par solve: +1. Two failures or par+2 or worse: -1. Skip: -1. Label: Gentle (1-3), Lively (4-6), Deep (7-10). The rules never change; only the pond does.
@@ -39,7 +39,7 @@ Read the pond, hover or hold to aim, drop stones, watch the rings and the lanter
 Five hand-made tutorial ponds teach one idea each: one lantern; one stone lights two; gold between two lily pads; echo chain of five; rock plus gold plus echo. Then generated ponds. Generator works backwards: place the hidden solution stones and drop times, put gold where two solution rings arrive together, echo lanterns with a lantern only their echo reaches, plain lanterns on solution rings, rocks near lanterns, then verify by simulation. After a failure, "Show lily pads" reveals the solution stone spots.
 
 ## §6 Art and audio
-Ink-blue water (radial gradient, drifting motes, two faint koi shadows), rings of warm light (#ffe2b0), echo rings pale blue (#bfe6ff), gold #ffc23d. Shapes separate kinds without color: circle, circle with outer ring, diamond. All sound is synthesized: stone "bloop" (sine 620 to 150 Hz plus noise splash), bell partials for lanterns, chord for gold, soft sigh on a missed window, low pad and water hush ambience, generated reverb.
+Ink-blue water (radial gradient, drifting motes, two faint koi shadows), rings of warm light (#ffe2b0), echo lanterns and rings cool blue (#7fe0ff, #5fd4ff), gold #ffc23d. Shapes separate kinds without color: circle, hexagon, diamond. All sound is synthesized: stone "bloop" (sine 620 to 150 Hz plus noise splash), bell partials for lanterns, chord for gold, soft sigh on a missed window, low pad and water hush ambience, generated reverb.
 
 ## §7 UX flow
 First visit opens on a welcome card: "Drop stones on the pond. Ripples light the lanterns they touch. Light every lantern." Then straight into the pond. Top: pond number, mood label, restart, sound, tuning. Bottom: stones, with a divider at par. Completion card at the bottom so the lit pond stays visible. Keys: R restart, M mute, T panel, Enter continue. The "?" button opens a how-to-play sheet with every element.

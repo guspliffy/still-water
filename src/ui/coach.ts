@@ -4,7 +4,7 @@ import type { PondDef, Vec } from '../sim/types';
 /** Icons drawn to match the in-game shapes, for cards and the how-to-play sheet. */
 export const ICONS = {
   plain: `<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="11" fill="#ffcf87"/><circle cx="20" cy="20" r="5" fill="#fff" opacity=".7"/></svg>`,
-  echo: `<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="16" fill="none" stroke="#d6f1ff" stroke-width="1.5"/><circle cx="20" cy="20" r="11" fill="#d6f1ff"/><circle cx="20" cy="20" r="5" fill="#fff" opacity=".7"/></svg>`,
+  echo: `<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="17" fill="none" stroke="#5fd4ff" stroke-width="1.2" opacity=".5"/><path d="M20 7 31.3 13.5V26.5L20 33 8.7 26.5V13.5Z" fill="#7fe0ff"/><path d="M20 14.5 24.8 17.3V22.7L20 25.5 15.2 22.7V17.3Z" fill="#fff" opacity=".75"/></svg>`,
   gold: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M20 4 36 20 20 36 4 20Z" fill="#ffc23d"/><path d="M20 13 27 20 20 27 13 20Z" fill="#fff4d0"/></svg>`,
   rock: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M9 14 18 7 30 10 34 21 28 32 14 33 6 24Z" fill="#2a3346" stroke="#56637d" stroke-width="2"/></svg>`,
   ring: `<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="15" fill="none" stroke="#ffe2b0" stroke-width="2.5"/><circle cx="20" cy="20" r="9" fill="none" stroke="#ffe2b0" stroke-width="1" opacity=".4"/></svg>`,

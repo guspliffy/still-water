@@ -9,9 +9,10 @@ const COLORS = {
   screen: 0x02040a,
   edge: 0x1d2d4a,
   stoneRing: 0xffe2b0,
-  echoRing: 0xbfe6ff,
+  echoRing: 0x5fd4ff,
   warm: 0xffcf87,
-  echoLit: 0xd6f1ff,
+  echoLit: 0x7fe0ff,
+  echoDim: 0x4aa3c4,
   gold: 0xffc23d,
   unlitFill: 0x0f1828,
   unlitStroke: 0x3a4a66,
@@ -373,6 +374,14 @@ export class PondView {
       v.body.scale.set(1);
       v.glow.alpha = 0;
       v.reflection.alpha = 0.04;
+      if (v.kind === 'echo') {
+        // Sonar ping: a small ring leaves the lantern every 2.4 s, hinting that it sends ripples.
+        const f = ((this.clock + v.phase) / 2.4) % 1;
+        if (f < 0.7) {
+          const k = f / 0.7;
+          v.fx.circle(0, 0, 20 + k * 26).stroke({ width: 1.5, color: COLORS.echoRing, alpha: (1 - k) * 0.5 });
+        }
+      }
       if (v.kind === 'gold') {
         // Breathing rim so gold reads as special before anything happens.
         const breathe = 0.5 + 0.5 * Math.sin(this.clock * 1.6 + v.phase);
@@ -496,16 +505,27 @@ export class PondView {
       }
       return;
     }
-    const litColor = v.kind === 'echo' ? COLORS.echoLit : COLORS.warm;
+    if (v.kind === 'echo') {
+      // Hexagon in cool blue: a different shape and colour from the round warm lanterns.
+      const hex = (rad: number) => Array.from({ length: 12 }, (_, i) => {
+        const a = Math.floor(i / 2) * (Math.PI / 3) - Math.PI / 2;
+        return i % 2 === 0 ? Math.cos(a) * rad : Math.sin(a) * rad;
+      });
+      if (v.lit) {
+        g.poly(hex(r + 3)).fill({ color: COLORS.echoLit });
+        g.poly(hex((r + 3) * 0.45)).fill({ color: 0xffffff, alpha: 0.75 });
+      } else {
+        g.poly(hex(r + 3)).fill({ color: COLORS.unlitFill }).stroke({ width: 2, color: COLORS.echoDim });
+        g.poly(hex((r + 3) * 0.4)).fill({ color: COLORS.echoLit, alpha: 0.3 });
+      }
+      return;
+    }
     if (v.lit) {
-      g.circle(0, 0, r).fill({ color: litColor });
+      g.circle(0, 0, r).fill({ color: COLORS.warm });
       g.circle(0, 0, r * 0.5).fill({ color: 0xffffff, alpha: 0.7 });
     } else {
       g.circle(0, 0, r).fill({ color: COLORS.unlitFill }).stroke({ width: 2, color: COLORS.unlitStroke });
-      g.circle(0, 0, r * 0.35).fill({ color: litColor, alpha: 0.16 });
-    }
-    if (v.kind === 'echo') {
-      g.circle(0, 0, r + 6).stroke({ width: 1.5, color: v.lit ? COLORS.echoLit : COLORS.unlitStroke, alpha: v.lit ? 0.8 : 0.9 });
+      g.circle(0, 0, r * 0.35).fill({ color: COLORS.warm, alpha: 0.16 });
     }
   }
 
