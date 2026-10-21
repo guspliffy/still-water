@@ -28,10 +28,7 @@
     "touchHoldPreviewMs": 120
   },
   "generator": {
-    "startDifficulty": 1,
     "maxDifficulty": 10,
-    "stepUpOnPar": 1,
-    "stepDownOnFail": 1,
     "lanternMinSpacing": 70,
     "rockRadiusMin": 28,
     "rockRadiusMax": 46
@@ -59,5 +56,13 @@
     "waveHeight": 1.0,
     "fireflies": 36,
     "tiltDegPortrait": 22
+  },
+  "levels": {
+    "count": 12,
+    "baseStart": 1.2,
+    "baseStep": 0.65,
+    "tierStep": 1.5,
+    "startTier": 1,
+    "twoStarsToEase": 2
   }
 }

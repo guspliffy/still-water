@@ -81,6 +81,24 @@
       .card .lead { color: var(--ink); font-size: 16px; line-height: 1.45; }
       #overlay.center { align-items: center; padding-bottom: 16px; }
       @media (max-width: 420px) { #title { font-size: 12.5px; letter-spacing: 0.05em; } }
+      #title { cursor: pointer; }
+      .card .gold { color: var(--gold); }
+      .card.map { width: min(360px, 100%); padding: 22px 20px 20px; }
+      .card.map h2 { font-size: 26px; }
+      .card.map p { margin-bottom: 8px; }
+      .map-wrap { position: relative; height: min(52vh, 440px); aspect-ratio: 300 / 500; margin: 6px auto 14px; }
+      .map-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+      .trail { fill: none; stroke: #2a3550; stroke-width: 3; stroke-dasharray: 2 7; stroke-linecap: round; }
+      .trail.lit { stroke: #e8c37a; stroke-dasharray: none; opacity: 0.75; }
+      .stop { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; display: grid; place-items: center;
+        font: inherit; font-size: 15px; font-weight: 600; padding: 0; border: 1.5px solid #2a3550; background: #0b1424; color: #4a5672; }
+      .stop.open { cursor: pointer; border-color: #8a93a8; color: var(--ink); background: #131f38; }
+      .stop.done { background: #e8dcc0; color: #0a1220; border-color: #e8dcc0; }
+      .stop.current { border-color: var(--gold); color: var(--gold); background: #1a2440; animation: here 2s ease-in-out infinite; }
+      @keyframes here { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 194, 61, 0.5); } 50% { box-shadow: 0 0 0 10px rgba(255, 194, 61, 0); } }
+      .stop i { position: absolute; top: 37px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
+      .stop i b { color: #3a4560; font-weight: 400; }
+      .stop i b.on { color: var(--gold); }
       .tp-dfwv { z-index: 20 !important; max-height: 80vh; overflow: auto; }
     </style>
   </head>
@@ -89,6 +107,7 @@
     <div id="top" class="hud">
       <div><span id="title"></span><span id="mood"></span></div>
       <div class="btns">
+        <button class="icon" id="btn-map" title="Map" aria-label="Map"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 3.5l4-1.5 5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5z"/><path d="M5.5 2v10.5M10.5 3.5V14"/></svg></button>
         <button class="icon" id="btn-help" title="How to play" aria-label="How to play">?</button>
         <button class="icon" id="btn-full" title="Full screen (F)" aria-label="Full screen"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 5.5v-4h4M10.5 1.5h4v4M14.5 10.5v4h-4M5.5 14.5h-4v-4"/></svg></button>
         <button class="icon" id="btn-sound" title="Sound (M)" aria-label="Toggle sound">♪</button>

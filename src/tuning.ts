@@ -1,4 +1,5 @@
 import defaults from '../config/tuning.json';
+import type { LevelParams } from './progress';
 import type { GenParams } from './sim/generator';
 import type { SimParams } from './sim/types';
 
@@ -30,4 +31,8 @@ export function genParams(t: Tuning = tuning): GenParams {
     spareStones: t.stones.spare,
     maxDifficulty: t.generator.maxDifficulty,
   };
+}
+
+export function levelParams(t: Tuning = tuning): LevelParams {
+  return { ...t.levels, maxDifficulty: t.generator.maxDifficulty };
 }

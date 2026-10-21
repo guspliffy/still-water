@@ -2,7 +2,7 @@
 
 **Milestone:** comparison prototype (M1 greybox plus M2 feel slice), built side by side with Bloom so Jonny can pick a direction.
 
-**Playable:** welcome card, 5 coached teaching ponds (`?fresh` replays them), then endless generated ponds with adaptive difficulty. Touch and mouse. Synth audio. Tuning panel.
+**Playable:** welcome card, 5 coached lessons (`?fresh` replays them), a map of 12 levels with three hidden versions each chosen by stars (GDD §3.6), then endless open water. Touch and mouse. Synth audio. Tuning panel.
 
 **3D:** default renderer since 2026-10-21 (Jonny asked for a beautiful 3D experience); `?2d` keeps the flat version. Multisampled glow pass and pixel-aware shader lines keep edges clean; resolution steps down on its own if a phone drops below 40 fps.
 
@@ -20,5 +20,6 @@
 - Gold window 0.7 s (was 0.5, too stressful in playtest), ring speed 130 u/s: generous by design while timing readability is the open risk.
 - Pond is a fixed 600x900 world scaled to fit, so every device sees the same pond (fair for a future daily pond).
 - No plan mode yet: the prototype should test whether live timing reads by eye first.
+- Stars count retries' throws too, so 3 stars means a perfect solve (Jonny wanted 3 stars harder).
 - Retry lives beside the stones, not in the top bar: that is where the player looks when they run out.
 - Near-miss note shows ring gap in seconds, neutral wording, so it teaches without blaming.

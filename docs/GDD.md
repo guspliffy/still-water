@@ -18,8 +18,8 @@ Read the pond, hover or hold to aim, drop stones, watch the rings and the lanter
 - §3.2 **Ring.** Expands at `ripple.speed` u/s to `ripple.maxRadius`, fading with `ripple.fadePower`. Hit time is analytic: t0 + distance / speed.
 - §3.3 **Lanterns.** Plain: lights on any ring. Echo (blue hexagon that pings): lights and, after `ripple.echoDelay`, sends a smaller ring (`ripple.echoMaxRadius`). Gold (diamond): lights when two different rings pass it within `gold.window` seconds.
 - §3.4 **Rocks** block rings; the ring is drawn with a gap behind the rock (its shadow), and lanterns in the shadow are not hit.
-- §3.5 **End.** All lanterns lit: complete. Out of stones and no ring moving: "the water settles", instant retry. Stars: 3 at or under par, 2 at par+1, else 1.
-- §3.6 **Adaptive difficulty.** After the tutorial, ponds are generated per index and difficulty 1 to 10 (`generator.*`). Clean par solve: +1. Two failures or par+2 or worse: -1. Skip: -1. Label: Gentle (1-3), Lively (4-6), Deep (7-10). The rules never change; only the pond does.
+- §3.5 **End.** All lanterns lit: complete. Out of stones and no ring moving: "the water settles", instant retry. Stars count every throw on the level, retries included: 3 for a perfect solve (par or under, no wasted stone), 2 for one wasted throw, else 1. "Again" after a solve starts the count fresh.
+- §3.6 **Level map and adaptive difficulty** (Jonny, 2026-10-21). After the five lessons comes a map of 12 named stops, then endless open water. Each stop has three versions (easier, normal, harder: 36 ponds), seeded so every player gets the same ponds. Difficulty = `levels.baseStart + level * baseStep + (tier - 1) * tierStep`, so the path gets steadily deeper. Tier starts normal. 3 stars: next level harder. 2 stars: same; `twoStarsToEase` 2-star results in a row: easier. 1 star or skip: easier. The tier is never shown, so nobody is labelled weak. Replays from the map use the version played and only improve stars.
 
 ## §4 Feel targets
 - Drop response under 50 ms: sound and splash fire in the input handler.

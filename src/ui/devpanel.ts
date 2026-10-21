@@ -5,7 +5,7 @@ import { tuning } from '../tuning';
 export interface DevHooks {
   /** A value changed. `section` is the top-level tuning key. */
   onChange: (section: string) => void;
-  state: { index: number; difficulty: number };
+  state: { index: number; tier: number };
   onJump: () => void;
   onShowSolution: () => void;
 }
@@ -34,7 +34,7 @@ export function createDevPanel(h: DevHooks): { toggle: () => void } {
 
   const pond = pane.addFolder({ title: 'Pond' });
   pond.addBinding(h.state, 'index', { label: 'pond #', min: 0, max: 200, step: 1 });
-  pond.addBinding(h.state, 'difficulty', { min: 1, max: 10, step: 1 });
+  pond.addBinding(h.state, 'tier', { label: 'tier (0 easier, 2 harder)', min: 0, max: 2, step: 1 });
   pond.addButton({ title: 'Go to pond' }).on('click', h.onJump);
   pond.addButton({ title: 'Show solution' }).on('click', h.onShowSolution);
 

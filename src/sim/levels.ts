@@ -86,8 +86,20 @@ export const TUTORIAL: PondDef[] = [
 ];
 
 /** Pond n (0-based). After the tutorial, ponds are generated from a fixed seed per index. */
+/** Names for the twelve stops on the map; beyond them the pond opens into endless water. */
+export const LEVEL_NAMES = [
+  'Reed Bend', 'Moss Steps', 'Willow Shade', 'Frog Stone', 'Lotus Bay', 'Misty Weir',
+  'Cedar Shrine', 'Firefly Hollow', 'Old Bridge', 'Moon Basin', 'Heron Isle', 'Still Water',
+];
+export const OPEN_WATER = 'Open water';
+
+/**
+ * Lessons first, then generated levels. Seeds depend only on the index and difficulty, so a
+ * level's three versions are the same ponds for every player.
+ */
 export function pondAt(index: number, difficulty: number, sp: SimParams, gp: GenParams): PondDef {
   if (index < TUTORIAL.length) return TUTORIAL[index];
+  const level = index - TUTORIAL.length;
   const pond = generatePond(1000 + index, difficulty, sp, gp);
-  return { ...pond, id: `pond-${index + 1}-d${difficulty}`, title: '' };
+  return { ...pond, id: `level-${level + 1}-d${difficulty}`, title: LEVEL_NAMES[level] ?? OPEN_WATER };
 }

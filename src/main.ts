@@ -1,22 +1,16 @@
 import { Audio, haptic } from './audio/audio';
-import { afterComplete, afterSkip, loadProgress, moodLabel, saveProgress, starsFor, type AdaptParams, type Progress } from './progress';
+import { afterComplete, afterSkip, difficultyFor, freshProgress, isLesson, levelOf, loadProgress, saveProgress, starsFor, tierAt, totalStars, type Progress } from './progress';
 import type { PondRenderer } from './render/renderer';
 import { computeGoldPreview } from './render/renderer';
 import { pondAt, TUTORIAL } from './sim/levels';
+import { mapHtml } from './ui/map';
 import { Sim, type SimEvent } from './sim/sim';
 import type { PondDef, Vec } from './sim/types';
-import { genParams, simParams, tuning } from './tuning';
+import { genParams, levelParams, simParams, tuning } from './tuning';
 import { Coach, ICONS, POND_CARDS } from './ui/coach';
 import { createDevPanel } from './ui/devpanel';
 
 const $ = (id: string) => document.getElementById(id)!;
-
-const adapt = (): AdaptParams => ({
-  startDifficulty: tuning.generator.startDifficulty,
-  maxDifficulty: tuning.generator.maxDifficulty,
-  stepUpOnPar: tuning.generator.stepUpOnPar,
-  stepDownOnFail: tuning.generator.stepDownOnFail,
-});
 
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
@@ -28,12 +22,14 @@ async function start() {
   $('app').appendChild(view.canvas);
   const audio = new Audio();
 
-  const fresh = { index: 0, difficulty: tuning.generator.startDifficulty };
+  const fresh = freshProgress(levelParams());
   // ?fresh starts over from the welcome screen (handy for replaying the introduction).
   let progress: Progress = new URLSearchParams(location.search).has('fresh') ? fresh : loadProgress(fresh);
   let pond: PondDef;
   let sim: Sim;
   let fails = 0;
+  // Every stone thrown on this level, retries included; stars are counted from this.
+  let throws = 0;
   let showSolution = false;
   let acc = 0;
   let cascadeStep = 0;
@@ -67,7 +63,7 @@ async function start() {
 
   function load(regenerate = true) {
     timers.splice(0).forEach(clearTimeout);
-    if (regenerate) pond = pondAt(progress.index, progress.difficulty, simParams(), genParams());
+    if (regenerate) pond = pondAt(progress.index, difficultyFor(levelOf(progress.index), tierAt(progress, progress.index), levelParams()), simParams(), genParams());
     const shown = showSolution ? { ...pond, hints: pond.solution.map(({ x, y }) => ({ x, y })) } : pond;
     sim = new Sim(shown, simParams());
     view.build(sim);
@@ -75,9 +71,10 @@ async function start() {
     cascadeStep = 0;
     lastLight = -10;
     hideOverlay();
-    const tut = progress.index < TUTORIAL.length;
-    $('title').innerHTML = `Pond <b>${progress.index + 1}</b>${tut ? ` · ${pond.title}` : ''}`;
-    $('mood').textContent = tut ? '' : moodLabel(progress.index, progress.difficulty);
+    const tut = isLesson(progress.index);
+    const n = levelOf(progress.index) + 1;
+    $('title').innerHTML = tut ? `Lesson <b>${progress.index + 1}</b> · ${pond.title}` : `Level <b>${n}</b> · ${pond.title}`;
+    $('mood').textContent = `★ ${totalStars(progress)}`;
     $('mood').style.display = tut ? 'none' : '';
     $('stones-caption').textContent = `stones · par ${pond.par}`;
     renderStones();
@@ -141,6 +138,7 @@ async function start() {
   function goTo(p: Progress) {
     progress = p;
     fails = 0;
+    throws = 0;
     showSolution = false;
     saveProgress(progress);
     load();
@@ -150,7 +148,7 @@ async function start() {
   const overlay = $('overlay');
   let overlayPrimary: (() => void) | null = null;
   function showOverlay(html: string, actions: Record<string, () => void>, primary: () => void, kind = '') {
-    overlay.innerHTML = `<div class="card ${kind.includes('wide') ? 'wide' : ''}">${html}</div>`;
+    overlay.innerHTML = `<div class="card ${kind.includes('wide') ? 'wide' : ''} ${kind.includes('map') ? 'map' : ''}">${html}</div>`;
     overlay.className = kind.includes('center') ? 'show center' : 'show';
     overlayPrimary = primary;
     overlay.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach((b) => {
@@ -167,18 +165,51 @@ async function start() {
     overlayPrimary = null;
   }
 
+  function showMap(intro: boolean) {
+    const { html, playable } = mapHtml(progress, tuning.levels.count);
+    const play = (index: number) => {
+      // Going back to the pond you're in the middle of just closes the map.
+      if (index === progress.index && sim.done === 'playing') hideOverlay();
+      else goTo({ ...progress, index });
+    };
+    const actions: Record<string, () => void> = { continue: () => play(progress.reached) };
+    for (const i of playable) actions[`go${i}`] = () => play(i);
+    showOverlay(intro ? html.replace('<h2>The path</h2>', '<h2>The path ahead</h2><p class="lead">Twelve ponds, each a little deeper.</p>') : html, actions, actions.continue, 'center map');
+  }
+
   function onComplete(stonesUsed: number) {
-    const stars = starsFor(stonesUsed, pond.par);
+    const stars = starsFor(throws, pond.par);
     audio.complete(stars);
-    const diff = stonesUsed - pond.par;
-    const line = diff < 0 ? `${-diff} under par. Lovely.` : diff === 0 ? `Lit at par, ${stonesUsed} stone${stonesUsed > 1 ? 's' : ''}.` : `${stonesUsed} stones, par is ${pond.par}.`;
-    const next = () => goTo(afterComplete(progress, stonesUsed, pond.par, fails, adapt()));
+    const diff = throws - pond.par;
+    const retried = throws > stonesUsed;
+    const line =
+      diff < 0 ? `${-diff} under par. Lovely.` : diff === 0 ? `Perfect, ${throws} stone${throws > 1 ? 's' : ''}.` : `${throws} throws${retried ? ' with your earlier tries' : ''}, par is ${pond.par}.`;
+    const before = progress;
+    const next = () => {
+      const p = afterComplete(before, stars, levelParams());
+      // Leaving the lessons: show the map once so the path ahead is clear.
+      if (isLesson(before.index) && !isLesson(p.index)) {
+        goTo(p);
+        showMap(true);
+      } else goTo(p);
+    };
     timers.push(
       window.setTimeout(() => {
         showOverlay(
           `<h2>Still.</h2><div class="stars">${[0, 1, 2].map((i) => `<span class="${i < stars ? 'on' : ''}">★</span>`).join('')}</div>
-           <p>${line}</p><div class="row"><button data-act="again">Again</button><button class="primary" data-act="next">Next pond</button></div>`,
-          { again: () => load(false), next },
+           <p>${line}</p><div class="row">${isLesson(progress.index) ? '' : '<button data-act="map">Map</button>'}<button data-act="again">Again</button><button class="primary" data-act="next">${isLesson(progress.index) ? 'Next' : 'Next level'}</button></div>`,
+          {
+            again: () => {
+              throws = 0;
+              load(false);
+            },
+            next,
+            map: () => {
+              progress = afterComplete(before, stars, levelParams());
+              saveProgress(progress);
+              showMap(false);
+            },
+          },
           next,
         );
       }, tuning.feel.completeDelayMs),
@@ -209,7 +240,7 @@ async function start() {
               showSolution = true;
               load(false);
             },
-            skip: () => goTo(afterSkip(progress, adapt())),
+            skip: () => goTo(afterSkip(progress)),
           },
           retry,
         );
@@ -268,6 +299,7 @@ async function start() {
     if (overlay.classList.contains('show')) return;
     const r = sim.dropStone(p);
     if (r) {
+      throws++;
       audio.plop(panOf(p.x));
       haptic(8);
       renderStones();
@@ -355,12 +387,18 @@ async function start() {
     }
   };
   $('btn-full').addEventListener('click', toggleFull);
+  const openMap = () => {
+    audio.unlock();
+    if (!isLesson(progress.reached)) showMap(false);
+  };
+  $('btn-map').addEventListener('click', openMap);
+  $('title').addEventListener('click', openMap);
   $('btn-help').addEventListener('click', () => {
     audio.unlock();
     showHowTo();
   });
 
-  const devState = { index: progress.index, difficulty: progress.difficulty };
+  const devState = { index: progress.index, tier: progress.tier };
   let rebuildTimer = 0;
   const panel = createDevPanel({
     state: devState,
@@ -370,7 +408,7 @@ async function start() {
       clearTimeout(rebuildTimer);
       rebuildTimer = window.setTimeout(() => load(true), 250);
     },
-    onJump: () => goTo({ index: devState.index, difficulty: devState.difficulty }),
+    onJump: () => goTo({ ...progress, index: devState.index, reached: Math.max(progress.reached, devState.index), tier: devState.tier }),
     onShowSolution: () => {
       showSolution = true;
       load(false);
@@ -378,7 +416,7 @@ async function start() {
   });
   $('btn-tune').addEventListener('click', () => {
     devState.index = progress.index;
-    devState.difficulty = progress.difficulty;
+    devState.tier = progress.tier;
     panel.toggle();
   });
   if (new URLSearchParams(location.search).has('dev')) panel.toggle();
