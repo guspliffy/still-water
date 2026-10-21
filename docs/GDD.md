@@ -42,7 +42,10 @@ Five hand-made tutorial ponds teach one idea each: one lantern; one stone lights
 Ink-blue water (radial gradient, drifting motes, two faint koi shadows), rings of warm light (#ffe2b0), echo rings pale blue (#bfe6ff), gold #ffc23d. Shapes separate kinds without color: circle, circle with outer ring, diamond. All sound is synthesized: stone "bloop" (sine 620 to 150 Hz plus noise splash), bell partials for lanterns, chord for gold, soft sigh on a missed window, low pad and water hush ambience, generated reverb.
 
 ## §7 UX flow
-Opens straight into the current pond. Top: pond number, mood label, restart, sound, tuning. Bottom: stones, with a divider at par. Completion card at the bottom so the lit pond stays visible. Keys: R restart, M mute, T panel, Enter continue.
+First visit opens on a welcome card: "Drop stones on the pond. Ripples light the lanterns they touch. Light every lantern." Then straight into the pond. Top: pond number, mood label, restart, sound, tuning. Bottom: stones, with a divider at par. Completion card at the bottom so the lit pond stays visible. Keys: R restart, M mute, T panel, Enter continue. The "?" button opens a how-to-play sheet with every element.
+
+### §7.1 Teaching (src/ui/coach.ts)
+Learning by doing, one short line at a time in a banner above the pond, plus pulsing "tap here" markers on lily pads. Lines react to play: after the first stone in pond 3 the marker moves to the other pad ("Now the other one, quickly!"); a missed gold window says to tap both faster. Each new element (gold, echo, rock) gets a one-sentence card with its icon before its pond. Teaching ponds never show a failure screen: out of stones resets the pond with a line, and pond 5 reveals lily pads after one reset. Stones are labelled "stones · par N".
 
 ## §8 Backlog
 - Plan mode (place stones with time paused, set delays, press play) if live timing proves fiddly.

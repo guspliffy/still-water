@@ -30,12 +30,13 @@
         padding: 0 max(16px, env(safe-area-inset-left)); pointer-events: none; }
       .hud > * { pointer-events: auto; }
       #top { top: 0; height: calc(56px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
-      #bottom { bottom: 0; height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); justify-content: center; }
+      #bottom { bottom: 0; height: calc(72px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); justify-content: center; }
+      #top > div:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-right: 8px; }
       #title { font-size: 15px; letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; }
       #title b { color: var(--ink); font-weight: 600; }
       #mood { margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid #2a3550; color: var(--dim); letter-spacing: 0.1em; }
       .btns { display: flex; gap: 6px; }
-      button.icon { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #1f2a42; background: rgba(12, 20, 38, 0.6);
+      button.icon { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #1f2a42; background: rgba(12, 20, 38, 0.6);
         color: var(--ink); font-size: 17px; display: grid; place-items: center; cursor: pointer; padding: 0; }
       button.icon:active { transform: scale(0.94); }
       #stones { display: flex; gap: 10px; align-items: center; }
@@ -55,9 +56,21 @@
       .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
       .card button { font: inherit; font-size: 15px; padding: 11px 20px; border-radius: 99px; cursor: pointer; border: 1px solid #2a3550; background: transparent; color: var(--ink); }
       .card button.primary { background: #e8dcc0; color: #0a1220; border-color: #e8dcc0; font-weight: 600; }
-      #help { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); color: var(--dim);
-        font-size: 13px; letter-spacing: 0.04em; opacity: 0; transition: opacity 0.8s; pointer-events: none; white-space: nowrap; }
-      #help.show { opacity: 0.85; }
+      #coach { position: fixed; left: 0; right: 0; top: calc(52px + env(safe-area-inset-top)); height: 52px; display: flex; align-items: center;
+        justify-content: center; padding: 0 16px; pointer-events: none; }
+      #coach span { max-width: 560px; text-align: center; font-size: 16px; line-height: 1.3; color: var(--ink); opacity: 0; transform: translateY(-4px);
+        transition: opacity 0.45s, transform 0.45s; text-shadow: 0 1px 8px #000; }
+      #coach span.show { opacity: 1; transform: none; }
+      #bottom { flex-direction: column; gap: 6px; }
+      #stones-caption { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+      .card .icon-row { display: flex; justify-content: center; margin-bottom: 8px; }
+      .card.wide { max-width: 360px; text-align: left; }
+      .card.wide h2 { text-align: center; font-size: 26px; }
+      .legend { display: grid; grid-template-columns: 44px 1fr; gap: 10px 12px; align-items: center; margin: 14px 0 18px; font-size: 14px; color: var(--ink); }
+      .legend small { color: var(--dim); display: block; font-size: 12.5px; }
+      .card .lead { color: var(--ink); font-size: 16px; line-height: 1.45; }
+      #overlay.center { align-items: center; padding-bottom: 16px; }
+      @media (max-width: 420px) { #title { font-size: 12.5px; letter-spacing: 0.05em; } }
       .tp-dfwv { z-index: 20 !important; max-height: 80vh; overflow: auto; }
     </style>
   </head>
@@ -66,13 +79,14 @@
     <div id="top" class="hud">
       <div><span id="title"></span><span id="mood"></span></div>
       <div class="btns">
+        <button class="icon" id="btn-help" title="How to play" aria-label="How to play">?</button>
         <button class="icon" id="btn-restart" title="Restart pond (R)" aria-label="Restart pond">↺</button>
         <button class="icon" id="btn-sound" title="Sound (M)" aria-label="Toggle sound">♪</button>
         <button class="icon" id="btn-tune" title="Tuning panel (T)" aria-label="Tuning panel">⚙</button>
       </div>
     </div>
-    <div id="bottom" class="hud"><div id="stones"></div></div>
-    <div id="help"></div>
+    <div id="coach"><span id="coach-text"></span></div>
+    <div id="bottom" class="hud"><div id="stones"></div><div id="stones-caption"></div></div>
     <div id="overlay"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

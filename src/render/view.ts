@@ -106,6 +106,8 @@ export class PondView {
   private scale = 1;
   previewAt: Vec | null = null;
   goldPreview: GoldPreview[] = [];
+  /** Teaching markers: pulsing "tap here" rings. */
+  targets: Vec[] = [];
   /** Real-time clock (seconds) for idle motion that should keep going between ponds. */
   private clock = 0;
 
@@ -276,6 +278,7 @@ export class PondView {
     this.drawRipples(now);
     this.drawLanterns(now);
     this.drawPreview(now);
+    this.drawTargets();
     this.drawParticles();
     this.drawFloaters();
   }
@@ -426,6 +429,18 @@ export class PondView {
       } else {
         g.circle(l.x, l.y, 30).stroke({ width: 1.5, color: COLORS.gold, alpha: 0.3 });
       }
+    }
+  }
+
+  private drawTargets(): void {
+    const g = this.preview;
+    for (const t of this.targets) {
+      // Two rings converge on the spot every 1.4 s, like a gentle "here".
+      for (let k = 0; k < 2; k++) {
+        const f = ((this.clock / 1.4 + k * 0.5) % 1);
+        g.circle(t.x, t.y, 46 - f * 34).stroke({ width: 2.5, color: 0xffffff, alpha: Math.sin(f * Math.PI) * 0.7 });
+      }
+      g.circle(t.x, t.y, 6).fill({ color: 0xffffff, alpha: 0.55 + 0.3 * Math.sin(this.clock * 4.5) });
     }
   }
 

@@ -6,6 +6,7 @@ import { pondAt, TUTORIAL } from './sim/levels';
 import { Sim, type SimEvent } from './sim/sim';
 import type { PondDef, Vec } from './sim/types';
 import { genParams, simParams, tuning } from './tuning';
+import { Coach, ICONS, POND_CARDS } from './ui/coach';
 import { createDevPanel } from './ui/devpanel';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -19,13 +20,6 @@ const adapt = (): AdaptParams => ({
 
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
-const HELP: Record<string, string> = {
-  t1: 'Tap the water',
-  t2: isTouch ? 'Hold a finger down to see a stone’s reach' : 'Hover to see a stone’s reach',
-  t3: 'Gold lights only where two rings meet',
-  t4: 'Echo lanterns ring out on their own',
-  t5: 'Rocks cast shadows on the water',
-};
 
 async function start() {
   const app = new Application();
@@ -51,7 +45,30 @@ async function start() {
   let lastLight = -10;
   const timers: number[] = [];
 
-  const relayout = () => view.layout(window.innerWidth, window.innerHeight, $('top').offsetHeight, $('bottom').offsetHeight);
+  const relayout = () => view.layout(window.innerWidth, window.innerHeight, $('top').offsetHeight + $('coach').offsetHeight - 8, $('bottom').offsetHeight);
+
+  // ---------- coaching ----------
+  let sayTimer = 0;
+  const coach = new Coach(
+    {
+      say: (text) => {
+        const el = $('coach-text');
+        if (el.textContent === text) return;
+        el.classList.remove('show');
+        clearTimeout(sayTimer);
+        sayTimer = window.setTimeout(() => {
+          el.textContent = text;
+          if (text) el.classList.add('show');
+        }, 220);
+      },
+      point: (targets) => {
+        view.targets = targets;
+      },
+    },
+    isTouch,
+  );
+  let welcomed = false;
+  let cardShownFor = '';
 
   function load(regenerate = true) {
     timers.splice(0).forEach(clearTimeout);
@@ -65,12 +82,51 @@ async function start() {
     hideOverlay();
     const tut = progress.index < TUTORIAL.length;
     $('title').innerHTML = `Pond <b>${progress.index + 1}</b>${tut ? ` · ${pond.title}` : ''}`;
-    $('mood').textContent = moodLabel(progress.index, progress.difficulty);
-    const help = HELP[pond.id];
-    $('help').textContent = help ?? '';
-    $('help').classList.toggle('show', !!help);
+    $('mood').textContent = tut ? '' : moodLabel(progress.index, progress.difficulty);
+    $('mood').style.display = tut ? 'none' : '';
+    $('stones-caption').textContent = `stones · par ${pond.par}`;
     renderStones();
     relayout();
+    coach.start(pond, progress.index, TUTORIAL.length);
+    if (progress.index === 0 && !welcomed) {
+      welcomed = true;
+      showWelcome();
+    } else if (POND_CARDS[pond.id] && cardShownFor !== pond.id) {
+      cardShownFor = pond.id;
+      const c = POND_CARDS[pond.id];
+      showOverlay(`<div class="icon-row">${c.icon}</div><h2>${c.title}</h2><p class="lead">${c.body}</p><div class="row"><button class="primary" data-act="ok">Got it</button></div>`, { ok: hideOverlay }, hideOverlay, 'center');
+    }
+  }
+
+  function showWelcome() {
+    showOverlay(
+      `<div class="icon-row">${ICONS.ring}${ICONS.plain}</div><h2>Still Water</h2>
+       <p class="lead">Drop stones on the pond.<br>Ripples light the lanterns they touch.<br><b>Light every lantern.</b></p>
+       <div class="row"><button class="primary" data-act="ok">Begin</button></div>`,
+      { ok: hideOverlay },
+      hideOverlay,
+      'center',
+    );
+  }
+
+  function showHowTo() {
+    const aim = isTouch ? 'Hold a finger down to aim, lift it to drop.' : 'Point to aim, click to drop.';
+    showOverlay(
+      `<h2>How to play</h2>
+       <p class="lead">Tap the water to drop a stone. Its ripple lights every lantern it touches. Light them all to clear the pond.</p>
+       <div class="legend">
+         ${ICONS.ring}<div>Ripple<small>Spreads out to the dashed circle you see while aiming, then fades.</small></div>
+         ${ICONS.plain}<div>Lantern<small>Lights when any ripple touches it.</small></div>
+         ${ICONS.echo}<div>Echo lantern<small>Lights, then sends out a smaller ripple of its own.</small></div>
+         ${ICONS.gold}<div>Gold lantern<small>Needs two ripples touching it within ${tuning.gold.window} s. The gold arc shows the time left.</small></div>
+         ${ICONS.rock}<div>Rock<small>Blocks ripples.</small></div>
+       </div>
+       <p>${aim} Use par or fewer stones for three stars.</p>
+       <div class="row"><button class="primary" data-act="ok">Got it</button></div>`,
+      { ok: hideOverlay },
+      hideOverlay,
+      'center wide',
+    );
   }
 
   function renderStones() {
@@ -94,9 +150,9 @@ async function start() {
   // ---------- overlay ----------
   const overlay = $('overlay');
   let overlayPrimary: (() => void) | null = null;
-  function showOverlay(html: string, actions: Record<string, () => void>, primary: () => void) {
-    overlay.innerHTML = `<div class="card">${html}</div>`;
-    overlay.classList.add('show');
+  function showOverlay(html: string, actions: Record<string, () => void>, primary: () => void, kind = '') {
+    overlay.innerHTML = `<div class="card ${kind.includes('wide') ? 'wide' : ''}">${html}</div>`;
+    overlay.className = kind.includes('center') ? 'show center' : 'show';
     overlayPrimary = primary;
     overlay.querySelectorAll<HTMLButtonElement>('button[data-act]').forEach((b) => {
       b.addEventListener('click', (e) => {
@@ -107,7 +163,7 @@ async function start() {
     });
   }
   function hideOverlay() {
-    overlay.classList.remove('show');
+    overlay.className = '';
     overlay.innerHTML = '';
     overlayPrimary = null;
   }
@@ -133,6 +189,13 @@ async function start() {
   function onStilled() {
     fails++;
     audio.stilled();
+    if (progress.index < TUTORIAL.length) {
+      // Teaching ponds never show a failure screen; they reset with a hint line.
+      coach.onRetry();
+      if (pond.id === 't5') showSolution = true;
+      timers.push(window.setTimeout(() => load(false), 1800));
+      return;
+    }
     const lit = sim.lanterns.filter((l) => l.lit).length;
     const canHint = !showSolution && progress.index >= 1;
     const retry = () => load(false);
@@ -160,6 +223,7 @@ async function start() {
   function handle(events: SimEvent[]) {
     for (const e of events) {
       view.onEvent(e);
+      coach.onEvent(e);
       switch (e.type) {
         case 'light': {
           // Lanterns lit close together climb the scale, so a cascade plays a rising phrase.
@@ -184,7 +248,6 @@ async function start() {
           audio.goldMiss(panOf(sim.pond.lanterns[e.lantern].x));
           break;
         case 'complete':
-          $('help').classList.remove('show');
           onComplete(e.stonesUsed);
           break;
         case 'stilled':
@@ -209,7 +272,7 @@ async function start() {
       audio.plop(panOf(p.x));
       haptic(8);
       renderStones();
-      if (pond.id === 't1') $('help').classList.remove('show');
+      coach.onDrop(p);
     } else if (sim.done === 'playing') audio.tock();
   }
 
@@ -267,6 +330,10 @@ async function start() {
     load(false);
   });
   $('btn-sound').addEventListener('click', toggleSound);
+  $('btn-help').addEventListener('click', () => {
+    audio.unlock();
+    showHowTo();
+  });
 
   const devState = { index: progress.index, difficulty: progress.difficulty };
   let rebuildTimer = 0;
