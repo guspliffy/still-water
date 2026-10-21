@@ -71,13 +71,23 @@ bool shadowed(vec2 c, vec2 p) {
   return false;
 }
 
+// World size of one screen pixel, set once per fragment so thin lines never alias.
+float px = 0.001;
+
 float ring(float d, float r, float w) {
-  float u = (d - r) / w;
-  return exp(-u * u);
+  float ww = max(w, px * 0.85);
+  float u = (d - r) / ww;
+  return exp(-u * u) * (w / ww);
+}
+
+// Anti-aliased version of step(edge, x), softened over about one pixel of x.
+float aaStep(float edge, float x, float pxInX) {
+  return smoothstep(edge - pxInX, edge + pxInX, x);
 }
 
 void main() {
   vec2 p = vWorld.xz;
+  px = length(fwidth(p));
   float sd = sdRoundBox(p, uPond.xy, uPond.z);
   if (sd > 0.0) discard;
 
@@ -150,7 +160,7 @@ void main() {
     float q = m.w;
     if (t == 1) {
       float ang = mod(atan(dm.x, -dm.y) + 2.0 * PI, 2.0 * PI) / (2.0 * PI);
-      float arc = step(ang, q);
+      float arc = aaStep(ang, q, px / (2.0 * PI * max(d, 0.05)));
       col += vec3(1.0, 0.72, 0.18) * (ring(d, 0.3, 0.018) * 2.6 * arc + ring(d, 0.3, 0.06) * 0.25 * arc);
       col += vec3(1.0, 0.7, 0.2) * exp(-d * d / 0.05) * 0.25 * q;
     } else if (t == 2) {
@@ -183,7 +193,9 @@ void main() {
     vec2 dp = p - uPreview.xy;
     float d = length(dp);
     float ang = atan(dp.y, dp.x);
-    float dash = step(0.5, fract(ang * 48.0 / (2.0 * PI) + uTime * 0.05));
+    float f = fract(ang * 48.0 / (2.0 * PI) + uTime * 0.05);
+    float e = px * 48.0 / (2.0 * PI * max(d, 0.05));
+    float dash = aaStep(0.5, f, e) * (1.0 - aaStep(1.0 - e, f, e));
     col += vec3(0.8, 0.86, 0.95) * ring(d, uPreview.z, 0.014) * dash * 0.55 * uPreview.w;
     col += vec3(1.0) * ring(d, 0.07, 0.01) * 0.8 * uPreview.w;
   }

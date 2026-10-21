@@ -132,6 +132,10 @@ async function start() {
       parts.push(`<span class="stone${i < sim.stonesUsed ? ' used' : ''}"></span>`);
     }
     el.innerHTML = parts.join('');
+    // Retry is always visible; dim before the first stone, and it calls out once you're out of stones.
+    const retry = $('btn-restart');
+    retry.classList.toggle('idle', sim.stonesUsed === 0);
+    retry.classList.toggle('nudge', sim.stonesUsed >= pond.stones && sim.done !== 'complete');
   }
 
   function goTo(p: Progress) {
@@ -325,6 +329,32 @@ async function start() {
     load(false);
   });
   $('btn-sound').addEventListener('click', toggleSound);
+
+  // Full screen: the standard API, the older WebKit one, or (iPhone Safari) a tip to add it to the home screen.
+  type FsDoc = Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void };
+  type FsEl = HTMLElement & { webkitRequestFullscreen?: () => void };
+  const fsDoc = document as FsDoc;
+  const fsRoot = document.documentElement as FsEl;
+  const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  if (standalone) $('btn-full').style.display = 'none';
+  const toggleFull = () => {
+    audio.unlock();
+    if (fsDoc.fullscreenElement || fsDoc.webkitFullscreenElement) {
+      (fsDoc.exitFullscreen ?? fsDoc.webkitExitFullscreen)?.call(fsDoc);
+    } else if (fsRoot.requestFullscreen) {
+      fsRoot.requestFullscreen().catch(() => {});
+    } else if (fsRoot.webkitRequestFullscreen) {
+      fsRoot.webkitRequestFullscreen();
+    } else {
+      showOverlay(
+        `<h2>Full screen</h2><p class="lead">On iPhone, tap <b>Share</b> then <b>Add to Home Screen</b>.<br>Still Water then opens full screen from its icon.</p><div class="row"><button class="primary" data-act="ok">Got it</button></div>`,
+        { ok: hideOverlay },
+        hideOverlay,
+        'center',
+      );
+    }
+  };
+  $('btn-full').addEventListener('click', toggleFull);
   $('btn-help').addEventListener('click', () => {
     audio.unlock();
     showHowTo();
@@ -357,6 +387,7 @@ async function start() {
     if (e.target instanceof HTMLInputElement) return;
     if (e.key === 'r' || e.key === 'R') load(false);
     else if (e.key === 'm' || e.key === 'M') toggleSound();
+    else if (e.key === 'f' || e.key === 'F') toggleFull();
     else if (e.key === 't' || e.key === 'T') panel.toggle();
     else if ((e.key === 'Enter' || e.key === ' ') && overlayPrimary) {
       e.preventDefault();

@@ -4,7 +4,9 @@
 
 **Playable:** welcome card, 5 coached teaching ponds (`?fresh` replays them), then endless generated ponds with adaptive difficulty. Touch and mouse. Synth audio. Tuning panel.
 
-**3D:** default renderer since 2026-10-21 (Jonny asked for a beautiful 3D experience); `?2d` keeps the flat version.
+**3D:** default renderer since 2026-10-21 (Jonny asked for a beautiful 3D experience); `?2d` keeps the flat version. Multisampled glow pass and pixel-aware shader lines keep edges clean; resolution steps down on its own if a phone drops below 40 fps.
+
+**HUD:** full screen button (iPhone shows the Add to Home Screen tip), labelled Retry pill beside the stones that pulses once stones run out.
 
 **Next:** Jonny plays Bloom and Still Water on phone and desktop, then we decide together which to take forward.
 
@@ -18,4 +20,5 @@
 - Gold window 0.7 s (was 0.5, too stressful in playtest), ring speed 130 u/s: generous by design while timing readability is the open risk.
 - Pond is a fixed 600x900 world scaled to fit, so every device sees the same pond (fair for a future daily pond).
 - No plan mode yet: the prototype should test whether live timing reads by eye first.
+- Retry lives beside the stones, not in the top bar: that is where the player looks when they run out.
 - Near-miss note shows ring gap in seconds, neutral wording, so it teaches without blaming.

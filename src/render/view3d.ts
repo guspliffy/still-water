@@ -10,6 +10,7 @@ import {
   ExtrudeGeometry,
   FogExp2,
   Group,
+  HalfFloatType,
   HemisphereLight,
   IcosahedronGeometry,
   InstancedMesh,
@@ -30,6 +31,7 @@ import {
   Vector2,
   Vector3,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -84,8 +86,9 @@ function glowTexture(): CanvasTexture {
   c.width = c.height = 128;
   const ctx = c.getContext('2d')!;
   const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(255,255,255,1)');
-  g.addColorStop(0.2, 'rgba(255,255,255,0.5)');
+  // Gentle core: the halo surrounds the lantern instead of washing its painted detail out.
+  g.addColorStop(0, 'rgba(255,255,255,0.4)');
+  g.addColorStop(0.25, 'rgba(255,255,255,0.28)');
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 128, 128);
@@ -169,10 +172,13 @@ export class Pond3D implements PondRenderer {
   private floaterLayer: HTMLDivElement;
   private reeds!: InstancedMesh;
   private reedData: { m: Matrix4; phase: number; pos: Vector3; s: number; rot: number }[] = [];
+  /** Auto quality: pixel ratio scale drops a step if the device can't hold ~40 fps. */
+  private quality = 1;
+  private perf = { frames: 0, time: 0, warm: 0 };
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, tuning.view3d.pixelRatioMax));
+    this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.setClearColor(0x02040a, 1);
@@ -231,7 +237,10 @@ export class Pond3D implements PondRenderer {
     this.dropPts.frustumCulled = false;
     this.scene.add(this.dropPts);
 
-    this.composer = new EffectComposer(this.renderer);
+    // Multisampled targets: without them the glow pass renders with no anti-aliasing at all,
+    // which made every edge look jagged.
+    const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 });
+    this.composer = new EffectComposer(this.renderer, target);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloom = new UnrealBloomPass(new Vector2(256, 256), tuning.view3d.bloomStrength, tuning.view3d.bloomRadius, tuning.view3d.bloomThreshold);
     this.composer.addPass(this.bloom);
@@ -289,8 +298,10 @@ export class Pond3D implements PondRenderer {
 
   layout(screenW: number, screenH: number, top: number, bottom: number): void {
     this.screen = { w: screenW, h: screenH, top, bottom };
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, tuning.view3d.pixelRatioMax));
+    const ratio = this.pixelRatio();
+    this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(screenW, screenH);
+    this.composer.setPixelRatio(ratio);
     this.composer.setSize(screenW, screenH);
     this.bloom.strength = tuning.view3d.bloomStrength;
     this.bloom.radius = tuning.view3d.bloomRadius;
@@ -434,8 +445,8 @@ export class Pond3D implements PondRenderer {
         const pop = 1 + Math.sin(p * Math.PI) * (1 - p) * 0.8;
         l.prop.body.scale.setScalar(pop);
         const isGold = l.kind === 'gold';
-        setGlow((isGold ? 3.2 : 2.2) * flicker * Math.min(1, age / 0.12));
-        l.glow.material.opacity = 0.5 * flicker * Math.min(1, age / 0.15);
+        setGlow((isGold ? 3.2 : 1.15) * flicker * Math.min(1, age / 0.12));
+        l.glow.material.opacity = 0.6 * flicker * Math.min(1, age / 0.15);
         l.glow.scale.setScalar((isGold ? 1.1 : 0.85) * (1 + 0.6 * (1 - p)));
         if (nl < MAX_LIGHTS) {
           const c = isGold ? COL.gold : l.kind === 'echo' ? COL.echo : COL.warm;
@@ -501,6 +512,32 @@ export class Pond3D implements PondRenderer {
     this.updateReeds();
     this.updateFloaters();
     this.composer.render(dt);
+    this.watchPerf(dt);
+  }
+
+  private pixelRatio(): number {
+    return Math.max(1, Math.min(window.devicePixelRatio || 1, tuning.view3d.pixelRatioMax) * this.quality);
+  }
+
+  /** After a warm-up, average two seconds of frames; step resolution down on slow devices. */
+  private watchPerf(dt: number): void {
+    const pf = this.perf;
+    if (this.quality <= 0.6 || dt <= 0 || dt > 0.25) return;
+    if (pf.warm < 2.5) {
+      pf.warm += dt;
+      return;
+    }
+    pf.frames++;
+    pf.time += dt;
+    if (pf.time < 2) return;
+    const fps = pf.frames / pf.time;
+    pf.frames = 0;
+    pf.time = 0;
+    if (fps < 40) {
+      this.quality = Math.max(0.6, this.quality - 0.2);
+      pf.warm = 0;
+      this.layout(this.screen.w, this.screen.h, this.screen.top, this.screen.bottom);
+    }
   }
 
   // ---------- helpers ----------

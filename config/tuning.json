@@ -54,7 +54,7 @@
     "bloomStrength": 0.6,
     "bloomRadius": 0.32,
     "bloomThreshold": 0.42,
-    "pixelRatioMax": 1.5,
+    "pixelRatioMax": 2,
     "lanternFloat": 0.11,
     "waveHeight": 1.0,
     "fireflies": 36,
