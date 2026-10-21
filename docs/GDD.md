@@ -33,7 +33,7 @@ Read the pond, hover or hold to aim, drop stones, watch the rings and the lanter
 2. **Gold match preview.** While aiming, a gold lantern pulses bright when a stone dropped *now* would arrive within the window of a ring already travelling (`assist.goldMatchPreview`). Turn it off in the panel to test pure judgement.
 3. **Visible window.** When the first ring touches a gold lantern it half-glows and a gold arc drains around it over the window, with a quiet high shimmer you can hear.
 4. **Near-miss feedback.** If a second ring arrives up to `gold.nearMissFactor` windows late, a floating note says how far apart the rings were ("0.62s apart").
-5. **Generous window.** `gold.window` 0.5 s (the concept doc's assist value) and a slow ring (130 u/s).
+5. **Generous window.** `gold.window` 0.7 s (raised from 0.5 after Jonny found doubles stressful) and a slow ring (130 u/s).
 
 ## §5 Content
 Five hand-made tutorial ponds teach one idea each: one lantern; one stone lights two; gold between two lily pads; echo chain of five; rock plus gold plus echo. Then generated ponds. Generator works backwards: place the hidden solution stones and drop times, put gold where two solution rings arrive together, echo lanterns with a lantern only their echo reaches, plain lanterns on solution rings, rocks near lanterns, then verify by simulation. After a failure, "Show lily pads" reveals the solution stone spots.

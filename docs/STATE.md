@@ -12,7 +12,7 @@
 
 ## Decisions
 - Touch drops on release, mouse on press: lets touch players hold to aim without a second gesture.
-- Gold window 0.5 s, ring speed 130 u/s: generous by design while timing readability is the open risk.
+- Gold window 0.7 s (was 0.5, too stressful in playtest), ring speed 130 u/s: generous by design while timing readability is the open risk.
 - Pond is a fixed 600x900 world scaled to fit, so every device sees the same pond (fair for a future daily pond).
 - No plan mode yet: the prototype should test whether live timing reads by eye first.
 - Near-miss note shows ring gap in seconds, neutral wording, so it teaches without blaming.

@@ -15,7 +15,7 @@
     "glowWidth": 14
   },
   "gold": {
-    "window": 0.5,
+    "window": 0.7,
     "nearMissFactor": 2.5
   },
   "stones": {
