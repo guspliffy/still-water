@@ -5,23 +5,17 @@ import {
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
-  CircleGeometry,
   Color,
-  CylinderGeometry,
   DirectionalLight,
-  DodecahedronGeometry,
-  DoubleSide,
   ExtrudeGeometry,
   FogExp2,
   Group,
   HemisphereLight,
+  IcosahedronGeometry,
   InstancedMesh,
-  LatheGeometry,
   Matrix4,
   Mesh,
-  MeshStandardMaterial,
   Object3D,
-  OctahedronGeometry,
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
@@ -36,7 +30,6 @@ import {
   Vector2,
   Vector3,
   WebGLRenderer,
-  ConeGeometry,
 } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -47,6 +40,7 @@ import type { Sim, SimEvent } from '../sim/sim';
 import type { LanternKind, Vec } from '../sim/types';
 import { tuning } from '../tuning';
 import type { GoldPreview, PondRenderer } from './renderer';
+import { grassBlade, makeBush, makeLantern, makeLilyPad, makeRock, toon, type LanternProp } from './props3d';
 import { createWaterMaterial, MARK, MAX_LIGHTS, MAX_MARKS, MAX_RIPPLES, MAX_ROCKS } from './water';
 
 /** Pond units (600 x 900) to scene units. */
@@ -61,8 +55,7 @@ const COL = {
 interface Lantern3D {
   kind: LanternKind;
   group: Group;
-  body: Mesh;
-  mat: MeshStandardMaterial;
+  prop: LanternProp;
   glow: Sprite;
   lit: boolean;
   litAt: number;
@@ -186,15 +179,15 @@ export class Pond3D implements PondRenderer {
     this.canvas = this.renderer.domElement;
     this.canvas.style.touchAction = 'none';
 
-    this.scene.background = new Color(0x02040a);
-    this.scene.fog = new FogExp2(0x02040a, 0.07);
-    this.scene.add(new AmbientLight(0x3a5480, 1.2));
-    this.scene.add(new HemisphereLight(0x3a5a90, 0x05070c, 0.6));
-    const moon = new DirectionalLight(0xc8d8ff, 1.4);
+    this.scene.background = new Color(0x050b14);
+    this.scene.fog = new FogExp2(0x050b14, 0.07);
+    this.scene.add(new AmbientLight(0x5868a0, 1.1));
+    this.scene.add(new HemisphereLight(0x8fa8e0, 0x1a2a22, 0.7));
+    const moon = new DirectionalLight(0xd2deff, 1.8);
     moon.position.set(-3, 6, -5);
     this.scene.add(moon);
     // Soft fill from the viewer's side so rocks and unlit lanterns read against the dark water.
-    const fill = new DirectionalLight(0x8090b0, 0.9);
+    const fill = new DirectionalLight(0xffdcb0, 0.55);
     fill.position.set(1, 4, 6);
     this.scene.add(fill);
 
@@ -202,7 +195,7 @@ export class Pond3D implements PondRenderer {
     this.waterMesh.rotation.x = -Math.PI / 2;
     this.scene.add(this.waterMesh, this.pondGroup);
 
-    const ground = new Mesh(new PlaneGeometry(80, 80), new MeshStandardMaterial({ color: 0x05070c, roughness: 1 }));
+    const ground = new Mesh(new PlaneGeometry(80, 80), toon(0x16261f));
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.12;
     this.scene.add(ground);
@@ -276,10 +269,19 @@ export class Pond3D implements PondRenderer {
     this.water.uniforms.uRockCount.value = rocks.length;
     rocks.forEach((r, i) => {
       this.water.uniforms.uRock.value[i].set((r.x - W / 2) * S, (r.y - H / 2) * S, r.r * S);
-      this.pondGroup.add(this.rockMesh(r.x, r.y, r.r, i));
+      const rock = makeRock(r.r * S, i);
+      const rp = this.toScene(r);
+      rock.position.set(rp.x, 0.0, rp.z);
+      rock.rotation.y = i * 1.7;
+      this.pondGroup.add(rock);
     });
 
-    for (const h of sim.pond.hints) this.pondGroup.add(this.lilyPad(this.toScene(h)));
+    sim.pond.hints.forEach((h, i) => {
+      const pad = makeLilyPad(0.24, i % 2 === 0, i + 3);
+      pad.position.copy(this.toScene(h));
+      pad.rotation.y = i * 2.1;
+      this.pondGroup.add(pad);
+    });
 
     this.lanterns = sim.pond.lanterns.map((def, i) => this.lanternMesh(def.kind, this.toScene(def), i));
     this.layout(this.screen.w, this.screen.h, this.screen.top, this.screen.bottom);
@@ -366,10 +368,8 @@ export class Pond3D implements PondRenderer {
         l.lit = true;
         l.litAt = this.clock;
         const c = e.kind === 'gold' ? COL.gold : e.kind === 'echo' ? COL.echo : COL.warm;
-        l.mat.emissive.copy(c);
-        l.mat.color.set(e.kind === 'gold' ? 0xffd27a : 0xfff1dc);
         l.glow.material.color.copy(c);
-        this.splash(l.pos.clone().setY(0.2), c, e.kind === 'gold' ? 34 : 14, 0.8);
+        this.splash(l.pos.clone().setY(l.prop.lightY), c, e.kind === 'gold' ? 34 : 14, 0.8);
         if (e.kind === 'gold') this.marksExtra.push({ x: l.pos.x, z: l.pos.z, type: MARK.flare, born: this.clock, life: tuning.feel.goldFlareMs / 1000 });
         break;
       }
@@ -418,32 +418,36 @@ export class Pond3D implements PondRenderer {
     const lightDur = tuning.feel.lanternLightMs / 1000;
     this.lanterns.forEach((l, i) => {
       const st = sim.lanterns[i];
-      const bob = Math.sin(this.clock * 1.3 + l.phase) * 0.012;
-      l.group.position.set(l.pos.x, tuning.view3d.lanternFloat + bob, l.pos.z);
-      l.group.rotation.z = Math.sin(this.clock * 0.9 + l.phase) * 0.05;
-      l.group.rotation.x = Math.cos(this.clock * 0.8 + l.phase) * 0.05;
-      if (l.kind === 'gold') l.body.rotation.y += dt * (l.lit ? 0.9 : 0.35);
+      const bob = Math.sin(this.clock * 1.3 + l.phase) * 0.008;
+      l.group.position.set(l.pos.x, bob, l.pos.z);
+      l.group.rotation.z = Math.sin(this.clock * 0.9 + l.phase) * 0.035;
+      l.group.rotation.x = Math.cos(this.clock * 0.8 + l.phase) * 0.035;
+      if (l.prop.spinner) {
+        l.prop.spinner.rotation.y += dt * (l.lit ? 0.9 : 0.35);
+        l.prop.spinner.position.y = 0.15 + Math.sin(this.clock * 1.7 + l.phase) * 0.012;
+      }
+      const setGlow = (v: number) => l.prop.glowMats.forEach((m, k) => (m.emissiveIntensity = k === 0 ? v : v * 0.35));
       const flicker = 0.9 + 0.1 * Math.sin(this.clock * 2.3 + l.phase) * Math.sin(this.clock * 3.7 + l.phase * 2);
       if (l.lit) {
         const age = this.clock - l.litAt;
         const p = Math.min(1, age / lightDur);
         const pop = 1 + Math.sin(p * Math.PI) * (1 - p) * 0.8;
-        l.body.scale.setScalar(pop);
+        l.prop.body.scale.setScalar(pop);
         const isGold = l.kind === 'gold';
-        l.mat.emissiveIntensity = (isGold ? 3.2 : 2.4) * flicker * Math.min(1, age / 0.12);
-        l.glow.material.opacity = 0.75 * flicker * Math.min(1, age / 0.15);
-        l.glow.scale.setScalar((isGold ? 1.5 : 1.15) * (1 + 0.6 * (1 - p)));
+        setGlow((isGold ? 3.2 : 2.2) * flicker * Math.min(1, age / 0.12));
+        l.glow.material.opacity = 0.5 * flicker * Math.min(1, age / 0.15);
+        l.glow.scale.setScalar((isGold ? 1.1 : 0.85) * (1 + 0.6 * (1 - p)));
         if (nl < MAX_LIGHTS) {
           const c = isGold ? COL.gold : l.kind === 'echo' ? COL.echo : COL.warm;
-          u.uLight.value[nl].set(l.pos.x, tuning.view3d.lanternFloat + 0.05, l.pos.z, flicker * Math.min(1, age / 0.15) * (isGold ? 1.3 : 1));
+          u.uLight.value[nl].set(l.pos.x, l.prop.lightY, l.pos.z, flicker * Math.min(1, age / 0.15) * (isGold ? 1.3 : 1));
           u.uLightCol.value[nl].set(c.r, c.g, c.b);
           nl++;
         }
         return;
       }
-      l.body.scale.setScalar(1);
+      l.prop.body.scale.setScalar(1);
       l.glow.material.opacity = 0;
-      l.mat.emissiveIntensity = 0.35 + 0.08 * flicker;
+      setGlow(0.05 + 0.02 * flicker);
       if (l.kind === 'echo') marks.push([l.pos.x, l.pos.z, MARK.echoPing, ((this.clock + l.phase) / 2.4) % 1]);
       if (l.kind === 'gold') {
         marks.push([l.pos.x, l.pos.z, MARK.goldRim, 0.5 + 0.5 * Math.sin(this.clock * 1.6 + l.phase)]);
@@ -451,7 +455,7 @@ export class Pond3D implements PondRenderer {
           const left = 1 - (now - st.windowOpenedAt) / sim.p.goldWindow;
           if (left > 0) {
             marks.push([l.pos.x, l.pos.z, MARK.goldWindow, left]);
-            l.mat.emissiveIntensity = 0.4 + 1.6 * left;
+            setGlow(0.4 + 1.8 * left);
             l.glow.material.color.copy(COL.gold);
             l.glow.material.opacity = 0.35 * left;
             l.glow.scale.setScalar(0.9);
@@ -604,41 +608,61 @@ export class Pond3D implements PondRenderer {
     const outer = roundRectShape(hw + 0.55, hh + 0.55, cr + 0.55);
     outer.holes.push(roundRectShape(hw + 0.01, hh + 0.01, cr + 0.01) as unknown as import('three').Path);
     const geo = new ExtrudeGeometry(outer, { depth: 0.14, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.05, bevelSegments: 3, curveSegments: 24 });
-    const rim = new Mesh(geo, new MeshStandardMaterial({ color: 0x2c3442, roughness: 0.92, metalness: 0 }));
+    const rim = new Mesh(geo, toon(0x6d6c60));
     rim.rotation.x = -Math.PI / 2;
     rim.position.y = -0.12;
     this.pondGroup.add(rim);
 
-    // Pebbles scattered along the rim.
+    // Rounded pebbles along the rim, in soft greys.
     const rand = rng(3);
-    const count = 140;
-    const pebbles = new InstancedMesh(new DodecahedronGeometry(1, 0), new MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true }), count);
+    const count = 150;
+    const pebbles = new InstancedMesh(new IcosahedronGeometry(1, 1), toon(0xffffff), count);
     const e = new Object3D();
     const c = new Color();
     for (let i = 0; i < count; i++) {
-      const p = this.rimPoint(hw, hh, cr, rand(), 0.08 + rand() * 0.42);
-      const s = 0.03 + rand() * 0.07;
-      e.position.set(p.x, 0.06 + s * 0.3, p.y);
+      const p = this.rimPoint(hw, hh, cr, rand(), 0.06 + rand() * 0.44);
+      const sz = 0.03 + rand() * 0.06;
+      e.position.set(p.x, 0.06 + sz * 0.25, p.y);
       e.rotation.set(rand() * 3, rand() * 3, rand() * 3);
-      e.scale.set(s * (1 + rand() * 0.6), s * 0.6, s);
+      e.scale.set(sz * (1 + rand() * 0.5), sz * 0.55, sz);
       e.updateMatrix();
       pebbles.setMatrixAt(i, e.matrix);
-      c.setHSL(0.6, 0.08 + rand() * 0.08, 0.22 + rand() * 0.18);
+      c.setHSL(0.12 + rand() * 0.05, 0.06 + rand() * 0.05, 0.42 + rand() * 0.18);
       pebbles.setColorAt(i, c);
     }
     this.pondGroup.add(pebbles);
 
-    // Reeds clustered near a few spots on the rim, swaying.
-    const reedCount = 70;
-    this.reeds = new InstancedMesh(new ConeGeometry(0.012, 1, 4, 1).translate(0, 0.5, 0), new MeshStandardMaterial({ color: 0x1d3a2a, roughness: 1 }), reedCount);
+    // Grass clumps on the bank and taller reeds in a few spots, all swaying gently.
+    const blades = 460;
+    this.reeds = new InstancedMesh(grassBlade(), toon(0xffffff), blades);
     this.reedData = [];
-    const clusters = [0.08, 0.31, 0.57, 0.83];
-    for (let i = 0; i < reedCount; i++) {
-      const base = clusters[i % clusters.length] + (rand() - 0.5) * 0.05;
-      const p = this.rimPoint(hw, hh, cr, (base + 1) % 1, 0.15 + rand() * 0.35);
-      this.reedData.push({ m: new Matrix4(), phase: rand() * 10, pos: new Vector3(p.x, 0.05, p.y), s: 0.25 + rand() * 0.55, rot: rand() * 6 });
+    const reedSpots = [0.07, 0.32, 0.56, 0.81];
+    for (let i = 0; i < blades; i++) {
+      const tall = i % 5 === 0;
+      const t = tall ? reedSpots[i % 4] + (rand() - 0.5) * 0.04 : Math.floor(rand() * 36) / 36 + (rand() - 0.5) * 0.012;
+      const p = this.rimPoint(hw, hh, cr, (t + 1) % 1, tall ? 0.12 + rand() * 0.3 : 0.5 + rand() * 0.6);
+      this.reedData.push({ m: new Matrix4(), phase: rand() * 10, pos: new Vector3(p.x, tall ? 0.05 : -0.1, p.y), s: tall ? 0.45 + rand() * 0.45 : 0.14 + rand() * 0.2, rot: rand() * 6 });
+      c.setHSL(0.26 + rand() * 0.08, 0.35 + rand() * 0.15, tall ? 0.2 + rand() * 0.08 : 0.24 + rand() * 0.12);
+      this.reeds.setColorAt(i, c);
     }
     this.pondGroup.add(this.reeds);
+
+    // Round bushes on the bank.
+    [0.03, 0.2, 0.45, 0.62, 0.74, 0.93].forEach((t, i) => {
+      const p = this.rimPoint(hw, hh, cr, t, 0.95 + rand() * 0.4);
+      const bush = makeBush(i, 0.9 + rand() * 0.6);
+      bush.position.set(p.x, -0.1, p.y);
+      this.pondGroup.add(bush);
+    });
+
+    // A few small lily pads tucked against the edge, purely decorative.
+    [0.12, 0.135, 0.37, 0.625, 0.64, 0.875].forEach((t, i) => {
+      const p = this.rimPoint(hw, hh, cr, t, -0.16 - rand() * 0.08);
+      const pad = makeLilyPad(0.09 + rand() * 0.06, i % 3 === 0, 40 + i);
+      pad.position.set(p.x, 0, p.y);
+      pad.rotation.y = rand() * 6;
+      this.pondGroup.add(pad);
+    });
   }
 
   /** A point on the rim band: t in 0..1 around the perimeter, out = distance outside the water edge. */
@@ -657,76 +681,22 @@ export class Pond3D implements PondRenderer {
     return { x: dx * (r + out), y: dz * (r + out) };
   }
 
-  private rockMesh(x: number, y: number, r: number, seed: number): Mesh {
-    const geo = new DodecahedronGeometry(r * S, 1);
-    const pos = geo.getAttribute('position') as BufferAttribute;
-    const rand = rng(seed * 17 + 3);
-    const jitter = new Map<string, number>();
-    for (let i = 0; i < pos.count; i++) {
-      const key = `${pos.getX(i).toFixed(3)},${pos.getY(i).toFixed(3)},${pos.getZ(i).toFixed(3)}`;
-      if (!jitter.has(key)) jitter.set(key, 0.85 + rand() * 0.3);
-      const j = jitter.get(key)!;
-      pos.setXYZ(i, pos.getX(i) * j, pos.getY(i) * j * 0.7, pos.getZ(i) * j);
-    }
-    geo.computeVertexNormals();
-    const m = new Mesh(geo, new MeshStandardMaterial({ color: 0x4a5468, roughness: 0.85, flatShading: true }));
-    const p = this.toScene({ x, y });
-    m.position.set(p.x, 0.02, p.z);
-    m.rotation.y = seed * 1.7;
-    return m;
-  }
-
-  private lilyPad(p: Vector3): Mesh {
-    const m = new Mesh(
-      new CircleGeometry(0.24, 32, 0.4, Math.PI * 2 - 0.5),
-      new MeshStandardMaterial({ color: 0x1f5238, roughness: 0.6, emissive: 0x0b2216, emissiveIntensity: 0.6, side: DoubleSide }),
-    );
-    m.rotation.x = -Math.PI / 2;
-    m.position.set(p.x, 0.006, p.z);
-    return m;
-  }
-
   private lanternMesh(kind: LanternKind, pos: Vector3, i: number): Lantern3D {
-    const group = new Group();
-    let geo: BufferGeometry;
-    if (kind === 'gold') {
-      geo = new OctahedronGeometry(0.16, 0);
-      geo.scale(1, 1.35, 1);
-    } else if (kind === 'echo') {
-      geo = new CylinderGeometry(0.13, 0.13, 0.22, 6);
-    } else {
-      const prof = [
-        [0.0, -0.12], [0.06, -0.118], [0.115, -0.08], [0.14, -0.02], [0.14, 0.02], [0.115, 0.08], [0.06, 0.118], [0.0, 0.12],
-      ].map(([x, y]) => new Vector2(x, y));
-      geo = new LatheGeometry(prof, 24);
-    }
+    const prop = makeLantern(kind);
+    const group = prop.root;
+    // Slightly larger than life so lanterns read clearly at phone size.
+    const scale = 1.35;
+    group.scale.setScalar(scale);
+    prop.lightY *= scale;
     const base = kind === 'gold' ? COL.gold : kind === 'echo' ? COL.echo : COL.warm;
-    const mat = new MeshStandardMaterial({
-      color: kind === 'gold' ? 0x8a6a2c : kind === 'echo' ? 0x2c5a70 : 0x6a5a48,
-      roughness: kind === 'gold' ? 0.3 : 0.75,
-      metalness: kind === 'gold' ? 0.6 : 0,
-      emissive: base.clone(),
-      emissiveIntensity: 0.25,
-    });
-    const body = new Mesh(geo, mat);
-    group.add(body);
-    if (kind === 'echo') {
-      // Dark caps top and bottom, like a paper lantern's frame.
-      const capMat = new MeshStandardMaterial({ color: 0x3a2e22, roughness: 0.8 });
-      const segs = 6;
-      const r = 0.135;
-      const top = new Mesh(new CylinderGeometry(r, r, 0.025, segs), capMat);
-      top.position.y = 0.12;
-      const bot = top.clone();
-      bot.position.y = -top.position.y;
-      body.add(top, bot);
-    }
     const glow = new Sprite(new SpriteMaterial({ map: this.glowTex, color: base.clone(), blending: AdditiveBlending, transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));
     glow.scale.setScalar(1.2);
+    glow.position.y = prop.lightY / scale;
     glow.renderOrder = 10;
     group.add(glow);
     group.position.copy(pos);
+    group.rotation.y = i * 0.9;
     this.pondGroup.add(group);
-    return { kind, group, body, mat, glow, lit: false, litAt: -1, touchedAt: -1, missAt: -1, phase: i * 1.7, pos };
+    return { kind, group, prop, glow, lit: false, litAt: -1, touchedAt: -1, missAt: -1, phase: i * 1.7, pos };
   }
 }

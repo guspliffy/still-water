@@ -13,7 +13,7 @@ TypeScript, Vite, Three.js (3D view, default), PixiJS 8 (2D view via `?2d`), Vit
 - `config/tuning.json`: every gameplay number. Code reads `tuning` from `src/tuning.ts`; never hardcode a value.
 - `src/sim/`: pure simulation, no DOM or Pixi. `sim.ts` (rings, hits, gold windows, echoes, end states), `geometry.ts`, `generator.ts` (backwards pond generator with verified solution), `levels.ts` (tutorial ponds, `pondAt`).
 - `src/render/renderer.ts`: `PondRenderer` interface both views implement, plus `computeGoldPreview`.
-- `src/render/view3d.ts` + `water.ts`: Three.js scene; one water shader draws ripples, reflections and surface marks; bloom via EffectComposer.
+- `src/render/view3d.ts` + `water.ts` + `props3d.ts` (toon-shaded lanterns, rocks, lily pads, bushes): Three.js scene; one water shader draws ripples, reflections and surface marks; bloom via EffectComposer.
 - `src/render/view.ts`: 2D Pixi view (`?2d`). Views read the sim, never mutate it. `arcs.ts`: rock-shadow arc helper.
 - `src/audio/audio.ts`: synthesized sounds and haptics.
 - `src/ui/devpanel.ts`: Tweakpane panel bound generically to tuning.json, with export.
