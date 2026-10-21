@@ -35,7 +35,9 @@ async function start() {
   const view = new PondView(app);
   const audio = new Audio();
 
-  let progress: Progress = loadProgress({ index: 0, difficulty: tuning.generator.startDifficulty });
+  const fresh = { index: 0, difficulty: tuning.generator.startDifficulty };
+  // ?fresh starts over from the welcome screen (handy for replaying the introduction).
+  let progress: Progress = new URLSearchParams(location.search).has('fresh') ? fresh : loadProgress(fresh);
   let pond: PondDef;
   let sim: Sim;
   let fails = 0;

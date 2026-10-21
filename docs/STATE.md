@@ -2,7 +2,7 @@
 
 **Milestone:** comparison prototype (M1 greybox plus M2 feel slice), built side by side with Bloom so Jonny can pick a direction.
 
-**Playable:** 5 tutorial ponds, then endless generated ponds with adaptive difficulty. Touch and mouse. Synth audio. Tuning panel.
+**Playable:** welcome card, 5 coached teaching ponds (`?fresh` replays them), then endless generated ponds with adaptive difficulty. Touch and mouse. Synth audio. Tuning panel.
 
 **Next:** Jonny plays Bloom and Still Water on phone and desktop, then we decide together which to take forward.
 
