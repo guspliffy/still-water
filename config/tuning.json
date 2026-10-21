@@ -47,5 +47,17 @@
   },
   "sim": {
     "stepHz": 120
+  },
+  "view3d": {
+    "tiltDeg": 36,
+    "fovDeg": 38,
+    "bloomStrength": 0.6,
+    "bloomRadius": 0.32,
+    "bloomThreshold": 0.42,
+    "pixelRatioMax": 1.5,
+    "lanternFloat": 0.11,
+    "waveHeight": 1.0,
+    "fireflies": 36,
+    "tiltDegPortrait": 22
   }
 }

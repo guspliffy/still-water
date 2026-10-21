@@ -39,6 +39,8 @@ Read the pond, hover or hold to aim, drop stones, watch the rings and the lanter
 Five hand-made tutorial ponds teach one idea each: one lantern; one stone lights two; gold between two lily pads; echo chain of five; rock plus gold plus echo. Then generated ponds. Generator works backwards: place the hidden solution stones and drop times, put gold where two solution rings arrive together, echo lanterns with a lantern only their echo reaches, plain lanterns on solution rings, rocks near lanterns, then verify by simulation. After a failure, "Show lily pads" reveals the solution stone spots.
 
 ## §6 Art and audio
+**3D (default, `view3d.*`):** night pond seen at a gentle tilt (36° landscape, 22° portrait so the tall pond fills a phone). Water is one shader: ripples bend the surface normals and glow along the ring, lit lanterns cast light pools and glints that the ripples break into streaks, a faint moon glint, darkening toward a stone rim with pebbles and swaying reeds. Lanterns float and bob: paper lantern (plain), blue hexagonal lantern (echo), slowly turning gold crystal (gold). Fireflies drift above. Bloom makes lit things glow. Gold timers, echo pings, aim circle and tap markers are drawn on the water surface. `?2d` keeps the flat prototype.
+
 Ink-blue water (radial gradient, drifting motes, two faint koi shadows), rings of warm light (#ffe2b0), echo lanterns and rings cool blue (#7fe0ff, #5fd4ff), gold #ffc23d. Shapes separate kinds without color: circle, hexagon, diamond. All sound is synthesized: stone "bloop" (sine 620 to 150 Hz plus noise splash), bell partials for lanterns, chord for gold, soft sigh on a missed window, low pad and water hush ambience, generated reverb.
 
 ## §7 UX flow

@@ -1,7 +1,7 @@
-import { Application } from 'pixi.js';
 import { Audio, haptic } from './audio/audio';
 import { afterComplete, afterSkip, loadProgress, moodLabel, saveProgress, starsFor, type AdaptParams, type Progress } from './progress';
-import { PondView } from './render/view';
+import type { PondRenderer } from './render/renderer';
+import { computeGoldPreview } from './render/renderer';
 import { pondAt, TUTORIAL } from './sim/levels';
 import { Sim, type SimEvent } from './sim/sim';
 import type { PondDef, Vec } from './sim/types';
@@ -22,17 +22,10 @@ const isTouch = matchMedia('(pointer: coarse)').matches;
 
 
 async function start() {
-  const app = new Application();
-  await app.init({
-    background: 0x02040a,
-    resizeTo: window,
-    antialias: true,
-    autoDensity: true,
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
-  });
-  $('app').appendChild(app.canvas);
-
-  const view = new PondView(app);
+  // 3D is the default; ?2d keeps the original flat prototype for comparison and slow devices.
+  const use2d = new URLSearchParams(location.search).has('2d');
+  const view: PondRenderer = use2d ? await (await import('./render/view')).PondView.create() : new (await import('./render/view3d')).Pond3D();
+  $('app').appendChild(view.canvas);
   const audio = new Audio();
 
   const fresh = { index: 0, difficulty: tuning.generator.startDifficulty };
@@ -278,7 +271,7 @@ async function start() {
     } else if (sim.done === 'playing') audio.tock();
   }
 
-  const canvas = app.canvas;
+  const canvas = view.canvas;
   canvas.addEventListener('pointerdown', (e) => {
     audio.unlock();
     if (overlay.classList.contains('show')) return;
@@ -377,8 +370,10 @@ async function start() {
 
   // ---------- loop ----------
   load();
-  app.ticker.add((ticker) => {
-    const dt = Math.min(ticker.deltaMS / 1000, 0.1);
+  let last = performance.now();
+  const frame = (t: number) => {
+    const dt = Math.min((t - last) / 1000, 0.1);
+    last = t;
     const step = 1 / tuning.sim.stepHz;
     acc += dt;
     while (acc >= step) {
@@ -387,9 +382,11 @@ async function start() {
     }
     const pp = previewPoint();
     view.previewAt = pp;
-    view.goldPreview = pp ? view.computeGoldPreview(pp) : [];
+    view.goldPreview = pp ? computeGoldPreview(sim, pp) : [];
     view.render(sim.time + acc, dt);
-  });
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 
 void start();

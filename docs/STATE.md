@@ -4,6 +4,8 @@
 
 **Playable:** welcome card, 5 coached teaching ponds (`?fresh` replays them), then endless generated ponds with adaptive difficulty. Touch and mouse. Synth audio. Tuning panel.
 
+**3D:** default renderer since 2026-10-21 (Jonny asked for a beautiful 3D experience); `?2d` keeps the flat version.
+
 **Next:** Jonny plays Bloom and Still Water on phone and desktop, then we decide together which to take forward.
 
 ## Open owner questions
@@ -11,6 +13,7 @@
 2. Keep the gold match preview as a permanent assist, an option, or tutorial-only? Default: option, on.
 
 ## Decisions
+- Three.js for the 3D view, sim untouched: the renderer interface let 2D and 3D share all game logic.
 - Touch drops on release, mouse on press: lets touch players hold to aim without a second gesture.
 - Gold window 0.7 s (was 0.5, too stressful in playtest), ring speed 130 u/s: generous by design while timing readability is the open risk.
 - Pond is a fixed 600x900 world scaled to fit, so every device sees the same pond (fair for a future daily pond).

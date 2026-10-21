@@ -3,6 +3,7 @@ import { dist, isOccluded, rng, rockShadow } from '../sim/geometry';
 import type { Sim, SimEvent } from '../sim/sim';
 import type { LanternKind, PondDef, Vec } from '../sim/types';
 import { tuning } from '../tuning';
+import type { GoldPreview, PondRenderer } from './renderer';
 import { visibleArcs } from './arcs';
 
 const COLORS = {
@@ -67,15 +68,8 @@ interface Floater {
   y: number;
 }
 
-export interface GoldPreview {
-  lantern: number;
-  /** Seconds between this stone's arrival and the closest other ring (negative = this one first). */
-  offset: number;
-  match: boolean;
-}
-
 /** Everything drawn. Reads the sim; never changes it. */
-export class PondView {
+export class PondView implements PondRenderer {
   readonly app: Application;
   readonly world = new Container();
   private glowTex = radialTexture(128, [
@@ -111,6 +105,23 @@ export class PondView {
   targets: Vec[] = [];
   /** Real-time clock (seconds) for idle motion that should keep going between ponds. */
   private clock = 0;
+
+  /** Creates the Pixi application and a 2D view on it. */
+  static async create(): Promise<PondView> {
+    const app = new Application();
+    await app.init({
+      background: COLORS.screen,
+      resizeTo: window,
+      antialias: true,
+      autoDensity: true,
+      resolution: Math.min(window.devicePixelRatio || 1, 2),
+    });
+    return new PondView(app);
+  }
+
+  get canvas(): HTMLCanvasElement {
+    return this.app.canvas;
+  }
 
   constructor(app: Application) {
     this.app = app;
@@ -245,32 +256,6 @@ export class PondView {
     text.position.set(p.x, p.y - 34);
     this.floaterLayer.addChild(text);
     this.floaters.push({ text, born: this.clock, y: p.y - 34 });
-  }
-
-  /** Compute which gold lanterns a stone dropped at p right now would pair with a live ring. */
-  computeGoldPreview(p: Vec): GoldPreview[] {
-    const sim = this.sim;
-    const out: GoldPreview[] = [];
-    const { speed, maxRadius, goldWindow } = sim.p;
-    sim.lanterns.forEach((l, i) => {
-      if (l.lit || l.def.kind !== 'gold') return;
-      const d = dist(p, l.def);
-      if (d > maxRadius || isOccluded(p, l.def, sim.pond.rocks)) return;
-      const tNew = sim.time + d / speed;
-      let best = Infinity;
-      if (l.windowOpenedAt >= 0) best = tNew - l.windowOpenedAt;
-      for (const r of sim.ripples) {
-        const dr = dist(r, l.def);
-        if (dr > r.maxR || isOccluded(r, l.def, sim.pond.rocks)) continue;
-        const tArr = r.t0 + dr / speed;
-        if (tArr < sim.time) continue;
-        const off = tNew - tArr;
-        if (Math.abs(off) < Math.abs(best)) best = off;
-      }
-      if (!Number.isFinite(best)) return;
-      out.push({ lantern: i, offset: best, match: Math.abs(best) <= goldWindow });
-    });
-    return out;
   }
 
   render(now: number, realDt: number): void {
