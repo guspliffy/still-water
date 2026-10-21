@@ -1,0 +1,51 @@
+{
+  "pond": {
+    "width": 600,
+    "height": 900,
+    "cornerRadius": 120,
+    "edgeMargin": 40
+  },
+  "ripple": {
+    "speed": 130,
+    "maxRadius": 270,
+    "echoMaxRadius": 170,
+    "echoDelay": 0.12,
+    "fadePower": 2.2,
+    "lineWidth": 3,
+    "glowWidth": 14
+  },
+  "gold": {
+    "window": 0.5,
+    "nearMissFactor": 2.5
+  },
+  "stones": {
+    "spare": 2,
+    "minSeparation": 30
+  },
+  "assist": {
+    "reachPreview": true,
+    "goldMatchPreview": true,
+    "touchHoldPreviewMs": 120
+  },
+  "generator": {
+    "startDifficulty": 1,
+    "maxDifficulty": 10,
+    "stepUpOnPar": 1,
+    "stepDownOnFail": 1,
+    "lanternMinSpacing": 70,
+    "rockRadiusMin": 28,
+    "rockRadiusMax": 46
+  },
+  "feel": {
+    "lanternLightMs": 420,
+    "goldFlareMs": 700,
+    "completeDelayMs": 900,
+    "cascadeNoteWindow": 1.6,
+    "sfxVolume": 0.7,
+    "ambientVolume": 0.18,
+    "haptics": true
+  },
+  "sim": {
+    "stepHz": 120
+  }
+}

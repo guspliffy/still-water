@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#02040a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <title>Still Water</title>
+    <style>
+      :root {
+        --ink: #e8dcc0;
+        --dim: #8a93a8;
+        --gold: #ffc23d;
+        --bg: #02040a;
+        --panel: rgba(10, 18, 34, 0.82);
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body {
+        margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none;
+      }
+      #app { position: fixed; inset: 0; }
+      #app canvas { display: block; touch-action: none; }
+      .hud { position: fixed; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between;
+        padding: 0 max(16px, env(safe-area-inset-left)); pointer-events: none; }
+      .hud > * { pointer-events: auto; }
+      #top { top: 0; height: calc(56px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+      #bottom { bottom: 0; height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); justify-content: center; }
+      #title { font-size: 15px; letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; }
+      #title b { color: var(--ink); font-weight: 600; }
+      #mood { margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid #2a3550; color: var(--dim); letter-spacing: 0.1em; }
+      .btns { display: flex; gap: 6px; }
+      button.icon { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #1f2a42; background: rgba(12, 20, 38, 0.6);
+        color: var(--ink); font-size: 17px; display: grid; place-items: center; cursor: pointer; padding: 0; }
+      button.icon:active { transform: scale(0.94); }
+      #stones { display: flex; gap: 10px; align-items: center; }
+      .stone { width: 16px; height: 12px; border-radius: 50%; background: #c9cfdb; box-shadow: 0 1px 0 #6d7487 inset, 0 0 8px rgba(200,210,230,0.15); transition: all 0.3s; }
+      .stone.used { background: transparent; box-shadow: 0 0 0 1.5px #2b3550 inset; }
+      .par { width: 1px; height: 18px; background: #3a4a66; margin: 0 2px; }
+      #overlay { position: fixed; inset: 0; display: none; align-items: flex-end; justify-content: center; pointer-events: none;
+        padding: 16px 16px calc(84px + env(safe-area-inset-bottom)); }
+      #overlay.show { display: flex; }
+      .card { pointer-events: auto; text-align: center; padding: 28px 30px 24px; border-radius: 22px; background: var(--panel);
+        border: 1px solid #1d2840; backdrop-filter: blur(6px); min-width: 250px; animation: rise 0.6s cubic-bezier(.2,.9,.3,1.2); }
+      @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+      .card h2 { margin: 0 0 6px; font-weight: 300; font-size: 34px; letter-spacing: 0.06em; }
+      .card p { margin: 4px 0 16px; color: var(--dim); font-size: 14px; }
+      .stars { font-size: 30px; letter-spacing: 6px; margin: 4px 0 4px; color: #2b3550; }
+      .stars .on { color: var(--gold); text-shadow: 0 0 14px rgba(255, 194, 61, 0.5); }
+      .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+      .card button { font: inherit; font-size: 15px; padding: 11px 20px; border-radius: 99px; cursor: pointer; border: 1px solid #2a3550; background: transparent; color: var(--ink); }
+      .card button.primary { background: #e8dcc0; color: #0a1220; border-color: #e8dcc0; font-weight: 600; }
+      #help { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); color: var(--dim);
+        font-size: 13px; letter-spacing: 0.04em; opacity: 0; transition: opacity 0.8s; pointer-events: none; white-space: nowrap; }
+      #help.show { opacity: 0.85; }
+      .tp-dfwv { z-index: 20 !important; max-height: 80vh; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="top" class="hud">
+      <div><span id="title"></span><span id="mood"></span></div>
+      <div class="btns">
+        <button class="icon" id="btn-restart" title="Restart pond (R)" aria-label="Restart pond">↺</button>
+        <button class="icon" id="btn-sound" title="Sound (M)" aria-label="Toggle sound">♪</button>
+        <button class="icon" id="btn-tune" title="Tuning panel (T)" aria-label="Tuning panel">⚙</button>
+      </div>
+    </div>
+    <div id="bottom" class="hud"><div id="stones"></div></div>
+    <div id="help"></div>
+    <div id="overlay"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
