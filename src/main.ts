@@ -539,7 +539,15 @@ async function start() {
       clearTimeout(rebuildTimer);
       rebuildTimer = window.setTimeout(() => load(true), 250);
     },
-    onJump: () => goTo({ ...progress, index: devState.index, reached: Math.max(progress.reached, devState.index), tier: devState.tier }),
+    // Jumping to a level replays its intro pond, so new ideas can be checked again.
+    onJump: () =>
+      goTo({
+        ...progress,
+        index: devState.index,
+        reached: Math.max(progress.reached, devState.index),
+        tier: devState.tier,
+        introsDone: progress.introsDone.filter((l) => l !== levelOf(devState.index)),
+      }),
     onShowSolution: () => {
       hintCount = pond.solution.length;
       load(false);
