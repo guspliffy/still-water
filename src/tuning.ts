@@ -28,8 +28,9 @@ export function genParams(t: Tuning = tuning): GenParams {
     lanternMinSpacing: t.generator.lanternMinSpacing,
     rockRadiusMin: t.generator.rockRadiusMin,
     rockRadiusMax: t.generator.rockRadiusMax,
-    spareStones: t.stones.spare,
     maxDifficulty: t.generator.maxDifficulty,
+    goldArrivalTolerance: t.generator.goldArrivalTolerance,
+    recipe: t.generator.recipe,
   };
 }
 

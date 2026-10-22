@@ -35,6 +35,7 @@ export function applySettings(s: Settings): void {
   tuning.feel.haptics = s.vibration;
   tuning.assist.goldMatchPreview = s.timingHelp;
   tuning.assist.meetPreview = s.timingHelp;
+  tuning.assist.partnerCircle = s.timingHelp;
 }
 
 export const canVibrate = () => 'vibrate' in navigator;

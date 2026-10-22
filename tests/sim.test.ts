@@ -163,12 +163,13 @@ describe('ponds', () => {
   });
 
   it('generated ponds are solvable at par and deterministic', () => {
-    for (let d = 1; d <= 10; d++) {
+    for (let d = 1; d <= gp.maxDifficulty; d++) {
       for (let seed = 0; seed < 6; seed++) {
         const p = generatePond(seed, d, sp, gp);
         expect(runSolution(p, sp, p.solution).done).toBe('complete');
-        expect(p.stones).toBe(p.par + gp.spareStones);
-        expect(p.lanterns.filter((l) => l.kind === 'gold').length).toBe(recipe(p.difficulty).gold);
+        const rc = recipe(p.difficulty, gp.recipe);
+        expect(p.stones).toBe(p.par + rc.spare);
+        expect(p.lanterns.filter((l) => l.kind === 'gold').length).toBe(rc.gold);
       }
     }
     expect(generatePond(42, 5, sp, gp)).toEqual(generatePond(42, 5, sp, gp));
@@ -183,6 +184,8 @@ describe('ponds', () => {
         if (level < 12) expect(p.lanterns.some((l) => l.kind === 'moon')).toBe(false);
         if (level < 9) expect(p.walls ?? []).toEqual([]);
         if (level < 16) expect(p.lanterns.some((l) => l.drift)).toBe(false);
+        // GDD §5: no pond holds more than ten lanterns.
+        expect(p.lanterns.length).toBeLessThanOrEqual(10);
       }
     }
   });

@@ -85,6 +85,8 @@ interface Floater {
   born: number;
 }
 
+const smooth = (x: number) => x * x * (3 - 2 * x);
+
 function glowTexture(): CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
@@ -168,6 +170,8 @@ export class Pond3D implements PondRenderer {
   private plane = new Plane(new Vector3(0, 1, 0), 0);
   private sim!: Sim;
   private clock = 0;
+  /** Clock time the pond was solved, or -1; drives the lanterns breathing together. */
+  private doneAt = -1;
   private screen = { w: 1, h: 1, top: 0, bottom: 0 };
   private flies: { pts: Points; base: Float32Array; phase: Float32Array };
   private drops: Drop[] = [];
@@ -451,7 +455,9 @@ export class Pond3D implements PondRenderer {
       const k = rad / r.maxR;
       const a = (1 - k ** tuning.ripple.fadePower) * (r.source === 'echo' ? 0.85 : 1);
       u.uRip.value[n].set((r.x - tuning.pond.width / 2) * S, (r.y - tuning.pond.height / 2) * S, rad * S, a);
-      u.uRipB.value[n].set(r.maxR * S, r.source === 'echo' ? 1 : 0, r.mirror + 1, 0);
+      // A newborn ring's core starts 1.3x bright and eases to normal (GDD §4).
+      const birth = Math.min(1, (now - r.t0) / (tuning.feel.ringBirthMs / 1000));
+      u.uRipB.value[n].set(r.maxR * S, r.source === 'echo' ? 1 : 0, r.mirror + 1, 1 + 0.3 * (1 - smooth(birth)));
       n++;
     }
     u.uRipCount.value = n;
@@ -460,6 +466,15 @@ export class Pond3D implements PondRenderer {
     const marks: [number, number, number, number][] = [];
     let nl = 0;
     const lightDur = tuning.feel.lanternLightMs / 1000;
+    const v3 = tuning.view3d;
+    u.uLightGain.value.set(v3.poolGain, v3.glintGain, v3.lightCap);
+    // Light budget (GDD §4.2): the newest light is brightest, the rest settle and share a budget.
+    const litCount = this.lanterns.reduce((c, l) => c + (l.lit ? 1 : 0), 0);
+    const share = Math.min(1, v3.litBudget / Math.max(1, litCount));
+    if (sim.done === 'complete') {
+      if (this.doneAt < 0) this.doneAt = this.clock;
+    } else this.doneAt = -1;
+    const together = this.doneAt < 0 ? 0 : smooth(Math.min(1, (this.clock - this.doneAt) / (tuning.feel.breatheTogetherMs / 1000)));
     this.lanterns.forEach((l, i) => {
       const st = sim.lanterns[i];
       if (st.def.drift) l.pos.copy(this.toScene(sim.lanternPos(i, now)));
@@ -479,12 +494,18 @@ export class Pond3D implements PondRenderer {
         const pop = 1 + Math.sin(p * Math.PI) * (1 - p) * 0.8;
         l.prop.body.scale.setScalar(pop);
         const isGold = l.kind === 'gold';
-        setGlow((isGold ? 3.2 : 1.15) * flicker * Math.min(1, age / 0.12));
-        l.glow.material.opacity = 0.6 * flicker * Math.min(1, age / 0.15);
+        // Pop at full, then settle to a shared steady glow that breathes; one intensity drives all.
+        const peak = isGold ? 1.3 : 1;
+        const steady = Math.max(v3.litFloor, (isGold ? v3.litSteadyGold : v3.litSteady) * share);
+        const settle = smooth(Math.min(1, Math.max(0, age - lightDur) / (tuning.feel.lanternSettleMs / 1000)));
+        const breath = 1 + v3.litBreath * settle * Math.sin(this.clock * Math.PI * 2 * v3.litBreathHz + l.phase * (1 - together));
+        const I = (peak + (steady - peak) * settle) * breath * Math.min(1, age / 0.12);
+        setGlow((isGold ? 3.2 / 1.3 : 1.15) * I);
+        l.glow.material.opacity = 0.6 * I;
         l.glow.scale.setScalar((isGold ? 1.1 : 0.85) * (1 + 0.6 * (1 - p)));
         if (nl < MAX_LIGHTS) {
           const c = colorOf(l.kind);
-          u.uLight.value[nl].set(l.pos.x, l.prop.lightY, l.pos.z, flicker * Math.min(1, age / 0.15) * (isGold ? 1.3 : 1));
+          u.uLight.value[nl].set(l.pos.x, l.prop.lightY, l.pos.z, I);
           u.uLightCol.value[nl].set(c.r, c.g, c.b);
           nl++;
         }
@@ -526,9 +547,20 @@ export class Pond3D implements PondRenderer {
           if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
           if (sim.reaches(pp, sim.lanternPos(i, now))) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
         });
+        // Partner circles (GDD §4.1): with no ring moving, a second stone on the circle drops together.
+        if (tuning.assist.partnerCircle && !this.ghost && sim.ripples.length === 0) {
+          let shown = 0;
+          sim.lanterns.forEach((l, i) => {
+            if (shown >= 3 || l.lit || l.def.kind !== 'gold' || l.windowOpenedAt >= 0) return;
+            const d = Math.min(...sim.pathsTo(pp, l.def));
+            if (d > sim.p.maxRadius) return;
+            marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.partner, d * S]);
+            shown++;
+          });
+        }
         for (const g of this.goldPreview) {
           const l = this.lanterns[g.lantern];
-          if (g.match && tuning.assist.goldMatchPreview) marks.push([l.pos.x, l.pos.z, MARK.goldMatch, 0.6 + 0.4 * Math.sin(now * 12)]);
+          if (g.match && tuning.assist.goldMatchPreview) marks.push([l.pos.x, l.pos.z, MARK.goldMatch, 0.6 + 0.4 * Math.sin(this.clock * Math.PI * 2 * tuning.feel.goldMatchPulseHz)]);
           else marks.push([l.pos.x, l.pos.z, MARK.goldNear, 1]);
         }
       }

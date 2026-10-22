@@ -19,6 +19,7 @@ export const MARK = {
   splash: 9, // param: 0..1 progress
   reachOk: 10, // lantern this stone would reach
   missed: 11, // unlit lantern after the water settles; param: pulse 0..1
+  partner: 12, // dashed circle around a gold where a partner stone would meet; param: radius
 } as const;
 
 const vertex = /* glsl */ `
@@ -43,7 +44,7 @@ uniform vec3 uCam;
 uniform vec3 uPond;          // half width, half height, corner radius
 uniform int uRipCount;
 uniform vec4 uRip[MAX_RIP];  // x, z, radius, alpha
-uniform vec4 uRipB[MAX_RIP]; // maxR, kind (0 stone, 1 echo), mirror wall + 1 (0 = real ring)
+uniform vec4 uRipB[MAX_RIP]; // maxR, kind (0 stone, 1 echo), mirror wall + 1 (0 = real ring), core boost
 uniform int uWallCount;
 uniform vec4 uWall[MAX_WALL]; // ax, az, bx, bz
 uniform int uRockCount;
@@ -51,6 +52,7 @@ uniform vec3 uRock[MAX_ROCK];
 uniform int uLightCount;
 uniform vec4 uLight[MAX_LIGHT];   // x, y, z, intensity
 uniform vec3 uLightCol[MAX_LIGHT];
+uniform vec3 uLightGain; // pool, glint, soft cap
 uniform int uMarkCount;
 uniform vec4 uMark[MAX_MARK];     // x, z, type, param
 uniform vec4 uPreview;            // x, z, R, alpha
@@ -163,7 +165,7 @@ void main() {
     float core = ring(d, a.z, uLine);
     float glow = ring(d, a.z, uGlow);
     float wake = 0.28 * ring(d, a.z - 0.16, uLine * 0.8) + 0.12 * ring(d, a.z - 0.34, uLine * 0.7);
-    emis += col * amp * (core * 1.25 + glow * 0.12 + wake * 0.6);
+    emis += col * amp * (core * 1.25 * uRipB[i].w + glow * 0.12 + wake * 0.6);
   }
 
   vec3 n = normalize(vec3(-grad.x, 1.0, -grad.y));
@@ -183,6 +185,8 @@ void main() {
   vec3 col = mix(deep, sky, fres) + vec3(0.75, 0.82, 1.0) * moon;
 
   // Lantern light: a pool on the water plus a specular glint that ripples break into streaks.
+  // The sum is soft-clamped so a solved pond glows rather than blazes (GDD §4.2).
+  vec3 lit = vec3(0.0);
   for (int i = 0; i < MAX_LIGHT; i++) {
     if (i >= uLightCount) break;
     vec4 L = uLight[i];
@@ -190,8 +194,9 @@ void main() {
     float spec = pow(max(dot(R, toL), 0.0), 90.0);
     vec2 dl = p - L.xz;
     float pool = exp(-dot(dl, dl) / 0.22);
-    col += uLightCol[i] * L.w * (spec * 1.6 + pool * 0.12);
+    lit += uLightCol[i] * L.w * (spec * uLightGain.y + pool * uLightGain.x);
   }
+  col += uLightGain.z * (1.0 - exp(-lit / uLightGain.z));
 
   col += emis;
 
@@ -232,6 +237,11 @@ void main() {
       col += vec3(1.0, 0.8, 0.5) * ring(d, 0.24, 0.012) * 0.6;
     } else if (t == 11) {
       col += vec3(1.0, 0.62, 0.55) * (ring(d, 0.26 + q * 0.05, 0.012) * (0.35 + 0.35 * q));
+    } else if (t == 12) {
+      float f = fract(atan(dm.y, dm.x) * 36.0 / (2.0 * PI) - uTime * 0.04);
+      float e = px * 36.0 / (2.0 * PI * max(d, 0.05));
+      float dash = aaStep(0.5, f, e) * (1.0 - aaStep(1.0 - e, f, e));
+      col += vec3(1.0, 0.78, 0.35) * ring(d, q, 0.011) * dash * 0.45;
     }
   }
 
@@ -288,6 +298,7 @@ export function createWaterMaterial(): ShaderMaterial {
       uWallCount: { value: 0 },
       uWall: { value: Array.from({ length: MAX_WALLS }, () => new Vector4()) },
       uLightCount: { value: 0 },
+      uLightGain: { value: new Vector3(0.1, 1.2, 0.6) },
       uLight: { value: Array.from({ length: MAX_LIGHTS }, () => new Vector4()) },
       uLightCol: { value: Array.from({ length: MAX_LIGHTS }, () => new Vector3()) },
       uMarkCount: { value: 0 },
