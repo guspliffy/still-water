@@ -11,6 +11,18 @@ export type LanternKind = 'plain' | 'echo' | 'gold' | 'moon';
 
 export interface LanternDef extends Vec {
   kind: LanternKind;
+  /**
+   * Drifting lantern: glides from (x, y) to (x + dx, y + dy) and back, easing at each end, once
+   * every `period` seconds of pond time, starting `phase` seconds into the cycle.
+   */
+  drift?: { dx: number; dy: number; period: number; phase: number };
+}
+
+/** Where a lantern is at pond time t. */
+export function lanternAt(l: LanternDef, t: number): Vec {
+  if (!l.drift) return l;
+  const u = 0.5 - 0.5 * Math.cos((2 * Math.PI * (t + l.drift.phase)) / l.drift.period);
+  return { x: l.x + l.drift.dx * u, y: l.y + l.drift.dy * u };
 }
 
 export interface RockDef extends Vec {

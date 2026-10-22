@@ -1,5 +1,5 @@
 import { allPaths, dist, distToSegment, insidePond, mirrorPoint, pathLength, sideOf } from './geometry';
-import type { LanternDef, PondDef, SimParams, Vec, WallDef } from './types';
+import { lanternAt, type LanternDef, type PondDef, type SimParams, type Vec, type WallDef } from './types';
 
 export interface Ripple {
   id: number;
@@ -78,6 +78,11 @@ export class Sim {
     return !this.pond.rocks.some((r) => dist(p, r) < r.r + 4);
   }
 
+  /** Where lantern i is at pond time t (drifting lanterns move; the rest stay put). */
+  lanternPos(i: number, t: number): Vec {
+    return lanternAt(this.pond.lanterns[i], t);
+  }
+
   /** Path lengths of every way a ring from src reaches `to`, straight or bounced. */
   pathsTo(src: Vec, to: Vec): number[] {
     return allPaths(src, to, this.pond.rocks, this.walls);
@@ -150,12 +155,38 @@ export class Sim {
       if (l.lit) return;
       // Moon lanterns sleep through stone rings; only an echo's ring wakes them.
       if (l.def.kind === 'moon' && rip.source !== 'echo') return;
+      if (l.def.drift) {
+        const t = this.driftHit(rip, i, ta, tb);
+        if (t !== null) out.push({ t, lantern: i, ripple: rip });
+        return;
+      }
       const d = pathLength({ x: rip.sx, y: rip.sy }, l.def, rip.mirror, this.pond.rocks, this.walls);
       if (d === null) return;
       // Half-open interval so a crossing on a step boundary counts exactly once.
       if (d > rA && d <= rB) out.push({ t: rip.t0 + d / this.p.speed, lantern: i, ripple: rip });
       if (d === 0 && rA === 0) out.push({ t: rip.t0, lantern: i, ripple: rip });
     });
+  }
+
+  /**
+   * When ring rip catches drifting lantern i inside (ta, tb], or null. The ring grows faster than
+   * any lantern drifts, so its edge passes the lantern exactly once; bisection finds that moment,
+   * then the path is checked for rocks, walls and bounces right there.
+   */
+  private driftHit(rip: Ripple, i: number, ta: number, tb: number): number | null {
+    const gap = (t: number) => this.p.speed * (t - rip.t0) - dist(rip, this.lanternPos(i, t));
+    const lo0 = Math.max(ta, rip.t0);
+    const hi0 = Math.min(tb, rip.t0 + rip.maxR / this.p.speed);
+    if (hi0 <= lo0 || gap(lo0) >= 0 || gap(hi0) < 0) return null;
+    let lo = lo0;
+    let hi = hi0;
+    for (let k = 0; k < 40; k++) {
+      const mid = (lo + hi) / 2;
+      if (gap(mid) < 0) lo = mid;
+      else hi = mid;
+    }
+    const at = this.lanternPos(i, hi);
+    return pathLength({ x: rip.sx, y: rip.sy }, at, rip.mirror, this.pond.rocks, this.walls) === null ? null : hi;
   }
 
   private applyHit(h: Hit): Ripple | null {
@@ -183,7 +214,7 @@ export class Sim {
     l.windowOpenedAt = -1;
     this.events.push({ type: 'light', t, lantern: i, kind: l.def.kind });
     if (l.def.kind !== 'echo') return null;
-    const r = this.addRipple(l.def, t + this.p.echoDelay, this.p.echoMaxRadius, 'echo', i);
+    const r = this.addRipple(this.lanternPos(i, t), t + this.p.echoDelay, this.p.echoMaxRadius, 'echo', i);
     this.events.push({ type: 'echo', t: r.t0, lantern: i, ripple: r.id });
     return r;
   }

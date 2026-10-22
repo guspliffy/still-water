@@ -9,6 +9,7 @@ export const ICONS = {
   rock: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M9 14 18 7 30 10 34 21 28 32 14 33 6 24Z" fill="#2a3346" stroke="#56637d" stroke-width="2"/></svg>`,
   moon: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M25 6a14 14 0 1 0 9 22A11 11 0 0 1 25 6Z" fill="#dcdcff"/><circle cx="31" cy="11" r="1.6" fill="#7fe0ff"/></svg>`,
   wall: `<svg viewBox="0 0 40 40" width="40" height="40"><rect x="17" y="4" width="7" height="32" rx="3" fill="#d6d9e2" stroke="#8a93a8" stroke-width="1.2"/><path d="M6 30 15 20M15 20 6 10" fill="none" stroke="#ffe2b0" stroke-width="2" stroke-linecap="round"/></svg>`,
+  drift: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M4 31h32" stroke="#8a93a8" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/><circle cx="20" cy="18" r="9" fill="#ffcf87"/><circle cx="20" cy="18" r="4" fill="#fff" opacity=".7"/><path d="M30 18h6M33 15l3 3-3 3M10 18H4M7 15l-3 3 3 3" fill="none" stroke="#ffe2b0" stroke-width="1.6" stroke-linecap="round"/></svg>`,
   ring: `<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="15" fill="none" stroke="#ffe2b0" stroke-width="2.5"/><circle cx="20" cy="20" r="9" fill="none" stroke="#ffe2b0" stroke-width="1" opacity=".4"/></svg>`,
 };
 
@@ -23,6 +24,7 @@ export const POND_CARDS: Record<string, IntroCard> = {
   t3: { icon: ICONS.gold, title: 'Gold lantern', body: 'Needs two ripples touching it at the same moment.' },
   t4: { icon: ICONS.echo, title: 'Echo lantern', body: 'When it lights, it sends out a ripple of its own.' },
   t5: { icon: ICONS.rock, title: 'Rock', body: 'Ripples can’t pass through. Lanterns behind it stay dark.' },
+  t8: { icon: ICONS.drift, title: 'Drifting lantern', body: 'Glides along its path. A ripple catches it wherever it is.' },
   t7: { icon: ICONS.wall, title: 'Mirror wall', body: 'Ripples bounce off it, like light off a mirror.' },
   t6: { icon: `${ICONS.moon}${ICONS.echo}`, title: 'Moon lantern', body: 'Sleeps through stone ripples. Only an echo’s ripple wakes it.' },
 };
@@ -66,6 +68,10 @@ export class Coach {
         return;
       case 't4':
         this.v.say('Drop one stone on the lily pad and watch');
+        this.v.point(h);
+        return;
+      case 't8':
+        this.v.say('Catch the drifting lantern clear of the rock');
         this.v.point(h);
         return;
       case 't7':
@@ -121,6 +127,10 @@ export class Coach {
         this.v.say('Each echo lantern lights the next…');
         this.v.point([]);
         return;
+      case 't8':
+        this.v.say('Will your ripple find it in the open?');
+        this.v.point([]);
+        return;
       case 't7':
         this.v.say('Watch it bounce off the wall…');
         this.v.point([]);
@@ -153,6 +163,7 @@ export class Coach {
         t5: '',
         t6: 'Only the echo’s ripple woke it.',
         t7: 'A bank shot. The bounce found it.',
+        t8: 'Caught it in the open.',
       };
       this.v.say(done[pond.id] ?? '');
       return;
@@ -166,7 +177,8 @@ export class Coach {
 
   /** Called when a teaching pond runs out of stones before it was solved. */
   onRetry(): void {
-    if (this.pond?.id.startsWith('t')) this.v.say('Out of stones. The pond resets, try again.');
+    if (this.pond?.id === 't8') this.v.say('The rock hid it. Wait until it’s clear.');
+    else if (this.pond?.id.startsWith('t')) this.v.say('Out of stones. The pond resets, try again.');
   }
 }
 

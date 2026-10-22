@@ -16,6 +16,7 @@ import {
   InstancedMesh,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   Object3D,
   PerspectiveCamera,
   Plane,
@@ -25,6 +26,7 @@ import {
   Scene,
   ShaderMaterial,
   Shape,
+  SphereGeometry,
   SRGBColorSpace,
   Sprite,
   SpriteMaterial,
@@ -307,6 +309,22 @@ export class Pond3D implements PondRenderer {
       this.pondGroup.add(pad);
     });
 
+    // A drifting lantern's path: a faint line of dots on the water.
+    const dotGeo = new SphereGeometry(0.022, 8, 6);
+    const dotMat = new MeshBasicMaterial({ color: 0xb8c2dc, transparent: true, opacity: 0.85 });
+    for (const def of sim.pond.lanterns) {
+      if (!def.drift) continue;
+      const a = this.toScene(def);
+      const b = this.toScene({ x: def.x + def.drift.dx, y: def.y + def.drift.dy });
+      const n = Math.max(2, Math.round(a.distanceTo(b) / 0.13));
+      for (let k = 0; k <= n; k++) {
+        const dot = new Mesh(dotGeo, dotMat);
+        dot.position.lerpVectors(a, b, k / n).setY(0.004);
+        dot.scale.y = 0.3;
+        this.pondGroup.add(dot);
+      }
+    }
+
     this.lanterns = sim.pond.lanterns.map((def, i) => this.lanternMesh(def.kind, this.toScene(def), i));
     this.layout(this.screen.w, this.screen.h, this.screen.top, this.screen.bottom);
   }
@@ -444,6 +462,7 @@ export class Pond3D implements PondRenderer {
     const lightDur = tuning.feel.lanternLightMs / 1000;
     this.lanterns.forEach((l, i) => {
       const st = sim.lanterns[i];
+      if (st.def.drift) l.pos.copy(this.toScene(sim.lanternPos(i, now)));
       const bob = Math.sin(this.clock * 1.3 + l.phase) * 0.008;
       l.group.position.set(l.pos.x, bob, l.pos.z);
       l.group.rotation.z = Math.sin(this.clock * 0.9 + l.phase) * 0.035;
@@ -505,7 +524,7 @@ export class Pond3D implements PondRenderer {
         sim.lanterns.forEach((l, i) => {
           // Gold has its own preview, and a stone ring never wakes a moon lantern.
           if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
-          if (sim.reaches(pp, l.def)) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
+          if (sim.reaches(pp, sim.lanternPos(i, now))) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
         });
         for (const g of this.goldPreview) {
           const l = this.lanterns[g.lantern];

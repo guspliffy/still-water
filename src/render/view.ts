@@ -177,6 +177,13 @@ export class PondView implements PondRenderer {
 
     for (const h of pond.hints) this.staticLayer.addChild(this.lilyPad(h));
     pond.rocks.forEach((r, i) => this.staticLayer.addChild(this.rock(r.x, r.y, r.r, i)));
+    for (const l of pond.lanterns) {
+      if (!l.drift) continue;
+      const g = new Graphics();
+      const n = Math.max(2, Math.round(Math.hypot(l.drift.dx, l.drift.dy) / 14));
+      for (let k = 0; k <= n; k++) g.circle(l.x + (l.drift.dx * k) / n, l.y + (l.drift.dy * k) / n, 1.6).fill({ color: 0x8a96b4, alpha: 0.5 });
+      this.staticLayer.addChild(g);
+    }
     for (const w of pond.walls ?? []) {
       const g = new Graphics();
       g.moveTo(w.ax, w.ay).lineTo(w.bx, w.by).stroke({ width: 12, color: 0xd9dce4, cap: 'round' });
@@ -343,6 +350,10 @@ export class PondView implements PondRenderer {
     const flareDur = tuning.feel.goldFlareMs / 1000;
     this.lanterns.forEach((v, i) => {
       const st = sim.lanterns[i];
+      if (st.def.drift) {
+        const at = sim.lanternPos(i, now);
+        v.root.position.set(at.x, at.y);
+      }
       v.fx.clear();
       const flicker = 0.92 + 0.08 * Math.sin(this.clock * 2.3 + v.phase) * Math.sin(this.clock * 3.7 + v.phase * 2);
       if (v.lit) {
@@ -417,10 +428,11 @@ export class PondView implements PondRenderer {
     }
     g.circle(p.x, p.y, 7).stroke({ width: 2, color: 0xffffff, alpha: ok ? 0.6 : 0.2 });
     if (!ok) return;
-    this.sim.lanterns.forEach((l) => {
+    this.sim.lanterns.forEach((l, i) => {
       if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
-      if (this.sim.reaches(p, l.def)) {
-        g.circle(l.def.x, l.def.y, LANTERN_R + 7).stroke({ width: 1.5, color: COLORS.warm, alpha: 0.45 });
+      const at = this.sim.lanternPos(i, this.sim.time);
+      if (this.sim.reaches(p, at)) {
+        g.circle(at.x, at.y, LANTERN_R + 7).stroke({ width: 1.5, color: COLORS.warm, alpha: 0.45 });
       }
     });
     for (const gp of this.goldPreview) {

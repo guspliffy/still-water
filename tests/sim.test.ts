@@ -124,6 +124,20 @@ describe('sim', () => {
     expect(runFor(noWall, 5).some((e) => e.type === 'light' && e.lantern === 0)).toBe(false);
   });
 
+  it('drifting lanterns are caught where they are when the ring arrives', () => {
+    const drift = { dx: 200, dy: 0, period: 8, phase: 0 };
+    const l = { x: 200, y: 300, kind: 'plain' as const, drift };
+    const sim = new Sim(pond({ stones: 1, lanterns: [l] }), sp);
+    sim.dropStone({ x: 300, y: 500 });
+    const lit = runFor(sim, 4).find((e) => e.type === 'light')!;
+    const at = sim.lanternPos(0, lit.t);
+    expect(Math.hypot(at.x - 300, at.y - 500)).toBeCloseTo(sp.speed * lit.t, 3);
+    // Same answer at a coarse step: exact, not frame-dependent.
+    const coarse = new Sim(pond({ stones: 1, lanterns: [l] }), sp);
+    coarse.dropStone({ x: 300, y: 500 });
+    expect(runFor(coarse, 4, 1 / 20).find((e) => e.type === 'light')!.t).toBeCloseTo(lit.t, 6);
+  });
+
   it('runs out of stones into a calm stilled state', () => {
     const sim = new Sim(pond({ stones: 1, lanterns: [{ x: 300, y: 100, kind: 'plain' }] }), sp);
     sim.dropStone({ x: 300, y: 800 });
@@ -165,6 +179,7 @@ describe('ponds', () => {
         if (level < 6) expect(p.rocks.length).toBe(0);
         if (level < 9) expect(p.lanterns.some((l) => l.kind === 'moon')).toBe(false);
         if (level < 12) expect(p.walls ?? []).toEqual([]);
+        if (level < 16) expect(p.lanterns.some((l) => l.drift)).toBe(false);
       }
     }
   });

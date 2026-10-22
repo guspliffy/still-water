@@ -17,9 +17,10 @@ export interface Features {
   rocks: boolean;
   moon: boolean;
   walls: boolean;
+  drift: boolean;
 }
 
-const ALL: Features = { echo: true, rocks: true, moon: true, walls: true };
+const ALL: Features = { echo: true, rocks: true, moon: true, walls: true, drift: true };
 
 /** What a difficulty level asks of the generator. Rules never change, only the pond. */
 export function recipe(difficulty: number, features: Features = ALL) {
@@ -35,6 +36,7 @@ export function recipe(difficulty: number, features: Features = ALL) {
     rocks: features.rocks && d >= 4 ? Math.min(4, 1 + Math.floor((d - 4) / 3)) : 0,
     // Each wall brings a bank-shot lantern hidden behind its own rock.
     walls: features.walls && d >= 5 ? (d >= 11 ? 2 : 1) : 0,
+    drift: features.drift && d >= 6 ? (d >= 11 ? 2 : 1) : 0,
     plain: Math.min(8, 1 + Math.floor(d / 2)),
     // Largest gap between the solution's drops: 0 means the golds sit on the midline between stones.
     maxDelay: d <= 2 ? 0.1 : Math.min(0.9, 0.1 + 0.1 * (d - 2)),
@@ -104,17 +106,20 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
     solution: stones,
     difficulty,
   };
+  const wallPt = (w: WallDef, end: 0 | 1): Vec => (end === 0 ? { x: w.ax, y: w.ay } : { x: w.bx, y: w.by });
+  const nearWall = (p: Vec, w: WallDef) => distToSegment(p, wallPt(w, 0), wallPt(w, 1));
+  // A drifting lantern occupies its whole path.
+  const pathEnd = (l: LanternDef): Vec => (l.drift ? { x: l.x + l.drift.dx, y: l.y + l.drift.dy } : l);
   const clear = (p: Vec, m: number) =>
     inside(p, gp.edgeMargin) &&
-    lanterns.every((l) => dist(l, p) >= gp.lanternMinSpacing) &&
-    stones.every((s) => dist(s, p) >= m);
+    lanterns.every((l) => distToSegment(p, l, pathEnd(l)) >= gp.lanternMinSpacing) &&
+    stones.every((s) => dist(s, p) >= m) &&
+    walls.every((w) => nearWall(p, w) >= 40);
   const arrival = (s: StoneDrop, p: Vec) => s.t + dist(s, p) / sp.speed;
   // Later lanterns must be in plain sight of the stone that lights them.
   const sees = (from: Vec, to: Vec) => pathLength(from, to, -1, rocks, walls) !== null;
   // 2. Mirror walls first, while the pond is empty. Each brings a bank shot: a lantern a solution
   // stone reaches only by the bounce, because a rock hides it from the straight ring.
-  const wallPt = (w: WallDef, end: 0 | 1): Vec => (end === 0 ? { x: w.ax, y: w.ay } : { x: w.bx, y: w.by });
-  const nearWall = (p: Vec, w: WallDef) => distToSegment(p, wallPt(w, 0), wallPt(w, 1));
   for (let k = 0; k < rc.walls; k++) {
     for (let tries = 0; tries < 120; tries++) {
       const s = stones[Math.floor(rand() * stones.length)];
@@ -193,6 +198,18 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
       const s = stones[Math.floor(rand() * stones.length)];
       const p = around(s, 70, R * 0.9);
       if (!clear(p, 60) || !sees(s, p)) continue;
+      // The first few drift along a path that stays in their stone's reach and sight the whole way.
+      if (n < rc.drift) {
+        const a = rand() * Math.PI * 2;
+        const len = 80 + rand() * 60;
+        const end = { x: p.x + Math.cos(a) * len, y: p.y + Math.sin(a) * len };
+        const along = Array.from({ length: 9 }, (_, i) => ({ x: p.x + (end.x - p.x) * (i / 8), y: p.y + (end.y - p.y) * (i / 8) }));
+        if (!along.every((q) => clear(q, 60) && sees(s, q) && dist(s, q) <= R * 0.85)) continue;
+        const period = 7 + rand() * 3;
+        lanterns.push({ ...p, kind: 'plain', drift: { dx: end.x - p.x, dy: end.y - p.y, period, phase: rand() * period } });
+        placed = true;
+        continue;
+      }
       lanterns.push({ ...p, kind: 'plain' });
       placed = true;
     }
@@ -204,7 +221,7 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
       const r = gp.rockRadiusMin + rand() * (gp.rockRadiusMax - gp.rockRadiusMin);
       const p = randPoint(gp.edgeMargin + r);
       const rock = { ...p, r };
-      if (lanterns.some((l) => dist(l, p) < r + 45)) continue;
+      if (lanterns.some((l) => distToSegment(p, l, pathEnd(l)) < r + 45)) continue;
       if (stones.some((s) => dist(s, p) < r + 40)) continue;
       if (rocks.some((o) => dist(o, p) < o.r + r + 40)) continue;
       if (walls.some((w) => nearWall(p, w) < r + 20)) continue;

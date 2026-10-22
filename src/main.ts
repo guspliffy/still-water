@@ -122,8 +122,10 @@ async function start() {
     const drops = attempt;
     startSim();
     // Skip the thinking time before the first stone, in whole steps so the replay stays exact.
+    // Not with drifting lanterns: where they are depends on the pond's clock.
     const step = 1 / tuning.sim.stepHz;
-    const offset = Math.max(0, Math.floor((drops[0].t - tuning.feel.replayAimLead) / step)) * step;
+    const drifting = pond.lanterns.some((l) => l.drift);
+    const offset = drifting ? 0 : Math.max(0, Math.floor((drops[0].t - tuning.feel.replayAimLead) / step)) * step;
     replay = { drops, next: 0, offset, over: false };
     view.targets = [];
     say('Your last try, at half speed');
@@ -170,6 +172,8 @@ async function start() {
          ${met(0) ? `${ICONS.gold}<div>Gold lantern<small>Needs two ripples touching it within ${tuning.gold.window} s. The gold arc shows the time left.</small></div>` : ''}
          ${met(6) ? `${ICONS.rock}<div>Rock<small>Blocks ripples.</small></div>` : ''}
          ${met(9) ? `${ICONS.moon}<div>Moon lantern<small>Only an echo lantern’s ripple can light it.</small></div>` : ''}
+         ${met(12) ? `${ICONS.wall}<div>Mirror wall<small>Blocks ripples and bounces them back.</small></div>` : ''}
+         ${met(16) ? `${ICONS.drift}<div>Drifting lantern<small>Glides along its dotted path. Rocks can hide it on the way.</small></div>` : ''}
        </div>
        <p>${aim} Use par or fewer stones for three stars.</p>
        <div class="row"><button class="primary" data-act="ok">Got it</button></div>`,
