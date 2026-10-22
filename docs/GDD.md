@@ -32,16 +32,15 @@ Read the pond, hover or hold to aim, drop stones, watch the rings and the chime 
 
 ### §4.1 Timing readability (the concept's biggest risk)
 Rule: the gold verdict is readable before the stone lands, and the predictive help is optional. Always on:
-1. **Reach preview.** Hover, or hold on touch after `assist.touchHoldPreviewMs`, shows the dashed circle where this ring fades and rings the unlit lanterns it reaches (`assist.reachPreview`).
+1. **Reach preview.** Hover, or hold on touch after `assist.touchHoldPreviewMs`, shows the dashed circle where this ring fades (`assist.reachPreview`). While aiming it is the only circle on the pond (Jonny, 2026-10-22: more circles confused him); lanterns in reach are not ringed.
 2. **Visible window.** When the first ring touches a gold it half-glows and a gold arc drains around it over the window, with a quiet shimmer.
 3. **Near miss.** A second ring up to `gold.nearMissFactor` windows late gets a floating "0.62s apart".
 4. **Missed lanterns** pulse after the water settles. **Par up front** in the banner until the first throw. **Watch** replays at `feel.replaySpeed`, reach circle `feel.replayAimLead` s before each stone.
 5. **Generous window.** `gold.window` 0.7 s, ring speed 130 u/s.
 
-**Timing help** (settings toggle, default on; sets `assist.meetPreview`, `assist.goldMatchPreview`, `assist.partnerCircle`):
-6. **Meeting band.** While aiming with a ring moving, a soft gold band marks where the ring you would drop now meets each moving ring, as wide as the window; its bright centre line is "exactly together".
-7. **Gold verdict on the lantern.** Each gold in reach shows a thin steady ring ("in reach, needs another ring") or a bright pulse at `feel.goldMatchPulseHz` (2 Hz: "drop now and it lights"). Touch drops on release, so the pulse at release is the verdict.
-8. **Partner circle** (new). While aiming with no ring moving, each gold in reach gets a thin dashed circle centred on it, radius = aim-to-gold distance: a second stone dropped together must land on it, dropped later, inside it. Teaches equal distance = drop together; hides once any ring travels. Shader mark, at most 3.
+**Timing help** (settings toggle, default on; sets `assist.goldMatchPreview`):
+6. ~~Meeting band~~ and ~~partner circle~~: cut 2026-10-22 (Jonny: too many circles). `assist.meetPreview` stays in the dev panel, off.
+7. **Gold verdict on the lantern.** A gold in reach that dropping now would light glows in pulses at `feel.goldMatchPulseHz` (2 Hz), the lantern itself and no ring. Touch drops on release, so the pulse at release is the verdict.
 
 ### §4.2 Light budget (Jonny, 2026-10-22: "too many lights gets disturbing")
 Cause: a lit lantern held its pop intensity forever (emissive, additive sprite, shader pool and glint, all summed uncapped), so brightness grew to 18 lanterns at full and bloom smeared the overlaps. Fix: the newest light is the brightest thing on the pond; everything else settles.

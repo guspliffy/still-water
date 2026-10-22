@@ -34,8 +34,6 @@ export function saveSettings(s: Settings): void {
 export function applySettings(s: Settings): void {
   tuning.feel.haptics = s.vibration;
   tuning.assist.goldMatchPreview = s.timingHelp;
-  tuning.assist.meetPreview = s.timingHelp;
-  tuning.assist.partnerCircle = s.timingHelp;
 }
 
 export const canVibrate = () => 'vibrate' in navigator;
@@ -47,7 +45,7 @@ export function settingsHtml(s: Settings, opts: { fullScreen: boolean; map: bool
     <div class="settings">
       ${row('sound', 'Sound', 'Music and lantern chimes')}
       ${canVibrate() ? row('vibration', 'Vibration', 'A light tap on each stone') : ''}
-      ${row('timingHelp', 'Timing help', 'Shows where ripples will meet while you aim')}
+      ${row('timingHelp', 'Timing help', 'A gold lantern pulses when a stone dropped now would light it')}
       ${opts.fullScreen ? `<div class="set-row"><div>Full screen<small>Also with the F key</small></div><button class="toggle" data-act="full">Open</button></div>` : ''}
     </div>
     <div class="row"><button class="primary" data-act="done">Done</button></div>

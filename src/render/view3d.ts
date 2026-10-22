@@ -508,6 +508,7 @@ export class Pond3D implements PondRenderer {
     const marks: [number, number, number, number][] = [];
     let nl = 0;
     const lightDur = tuning.feel.lanternLightMs / 1000;
+    const aiming = !!this.previewAt && tuning.assist.reachPreview && sim.done === 'playing';
     const v3 = tuning.view3d;
     u.uLightGain.value.set(v3.poolGain, v3.glintGain, v3.lightCap);
     // Light budget (GDD §4.2): the newest light is brightest, the rest settle and share a budget.
@@ -558,9 +559,10 @@ export class Pond3D implements PondRenderer {
       l.prop.body.scale.setScalar(1);
       l.glow.material.opacity = 0;
       setGlow(0.05 + 0.02 * flicker);
-      if (l.kind === 'echo') marks.push([l.pos.x, l.pos.z, MARK.echoPing, ((this.clock + l.phase) / 2.4) % 1]);
+      // While aiming, idle marks step aside so the stone's reach circle is the only circle.
+      if (l.kind === 'echo' && !aiming) marks.push([l.pos.x, l.pos.z, MARK.echoPing, ((this.clock + l.phase) / 2.4) % 1]);
       if (l.kind === 'gold') {
-        marks.push([l.pos.x, l.pos.z, MARK.goldRim, 0.5 + 0.5 * Math.sin(this.clock * 1.6 + l.phase)]);
+        if (!aiming) marks.push([l.pos.x, l.pos.z, MARK.goldRim, 0.5 + 0.5 * Math.sin(this.clock * 1.6 + l.phase)]);
         if (st.windowOpenedAt >= 0) {
           const left = 1 - (now - st.windowOpenedAt) / sim.p.goldWindow;
           if (left > 0) {
@@ -583,29 +585,19 @@ export class Pond3D implements PondRenderer {
       const ok = sim.canDropAt(pp) && sim.stonesLeft > 0;
       const sp = this.toScene(pp);
       u.uPreview.value.set(sp.x, sp.z, sim.p.maxRadius * S, ok ? 1 : 0.35);
-      u.uMeet.value = ok && tuning.assist.meetPreview && !this.ghost ? 1 : 0;
+      // Only the stone's own reach circle shows while aiming (Jonny, 2026-10-22: more circles confused).
+      // Timing help speaks through the gold lantern itself: it glows in pulses when dropping now lights it.
+      u.uMeet.value = 0;
       u.uWinW.value = sim.p.speed * sim.p.goldWindow * S;
-      if (ok) {
-        sim.lanterns.forEach((l, i) => {
-          // Gold has its own preview, and a stone ring never wakes a moon lantern.
-          if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
-          if (sim.reaches(pp, sim.lanternPos(i, now))) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
-        });
-        // Partner circles (GDD §4.1): with no ring moving, a second stone on the circle drops together.
-        if (tuning.assist.partnerCircle && !this.ghost && sim.ripples.length === 0) {
-          let shown = 0;
-          sim.lanterns.forEach((l, i) => {
-            if (shown >= 3 || l.lit || l.def.kind !== 'gold' || l.windowOpenedAt >= 0) return;
-            const d = Math.min(...sim.pathsTo(pp, l.def));
-            if (d > sim.p.maxRadius) return;
-            marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.partner, d * S]);
-            shown++;
-          });
-        }
+      if (ok && tuning.assist.goldMatchPreview) {
+        const pulse = 0.5 + 0.5 * Math.sin(this.clock * Math.PI * 2 * tuning.feel.goldMatchPulseHz);
         for (const g of this.goldPreview) {
+          if (!g.match) continue;
           const l = this.lanterns[g.lantern];
-          if (g.match && tuning.assist.goldMatchPreview) marks.push([l.pos.x, l.pos.z, MARK.goldMatch, 0.6 + 0.4 * Math.sin(this.clock * Math.PI * 2 * tuning.feel.goldMatchPulseHz)]);
-          else marks.push([l.pos.x, l.pos.z, MARK.goldNear, 1]);
+          l.prop.glowMats.forEach((m, k) => (m.emissiveIntensity = (0.5 + 1.6 * pulse) * (k === 0 ? 1 : 0.35)));
+          l.glow.material.color.copy(COL.gold);
+          l.glow.material.opacity = 0.15 + 0.35 * pulse;
+          l.glow.scale.setScalar(0.9);
         }
       }
     } else {

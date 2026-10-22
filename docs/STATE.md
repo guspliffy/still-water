@@ -15,6 +15,7 @@ Phase 1 progress: done = meeting band, missed lanterns pulse, Watch replay, intr
 None open. Answered 2026-10-22: yes to mirror walls, moon lanterns, drifting lanterns; yes to anonymous play data; public link for testers; gold match preview stays as an option, on by default.
 
 ## Decisions
+- While aiming only the stone's reach circle shows; timing help is a pulsing gold lantern, no rings or bands (Jonny, 2026-10-22).
 - Overload is fixed by caps and a light budget, not by fewer ideas; difficulty rises through timing and combination (Fable, 2026-10-22).
 - Settings stay basic (Jonny, 2026-10-22): good defaults, player only toggles basics like sound.
 - More levels and more lanterns/obstacles per level (Jonny, 2026-10-22).

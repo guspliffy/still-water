@@ -11,15 +11,11 @@ export const MARK = {
   goldWindow: 1, // param: fraction of window left
   goldMiss: 2, // param: 0..1 progress of the fade
   echoPing: 3, // param: 0..1 phase of the ping
-  goldMatch: 4, // param: pulse 0..1
-  goldNear: 5,
   goldRim: 6, // param: breathe 0..1
   target: 7,
   flare: 8, // param: 0..1 progress
   splash: 9, // param: 0..1 progress
-  reachOk: 10, // lantern this stone would reach
   missed: 11, // unlit lantern after the water settles; param: pulse 0..1
-  partner: 12, // dashed circle around a gold where a partner stone would meet; param: radius
 } as const;
 
 const vertex = /* glsl */ `
@@ -218,10 +214,6 @@ void main() {
       col += vec3(0.55, 0.4, 0.15) * ring(d, 0.3 + q * 0.1, 0.02) * (1.0 - q) * 1.5;
     } else if (t == 3) {
       col += vec3(0.32, 0.78, 1.0) * ring(d, 0.22 + q * 0.3, 0.014) * (1.0 - q) * 0.9;
-    } else if (t == 4) {
-      col += vec3(1.0, 0.75, 0.2) * (ring(d, 0.34, 0.02) * 2.0 + ring(d, 0.42, 0.015) * 0.8) * q;
-    } else if (t == 5) {
-      col += vec3(1.0, 0.75, 0.2) * ring(d, 0.32, 0.012) * 0.35;
     } else if (t == 6) {
       col += vec3(1.0, 0.72, 0.2) * ring(d, 0.27, 0.01) * (0.12 + 0.12 * q);
     } else if (t == 7) {
@@ -234,15 +226,8 @@ void main() {
       col += vec3(1.0, 0.78, 0.25) * ring(d, 0.2 + q * 0.9, 0.03) * (1.0 - q) * 2.5;
     } else if (t == 9) {
       col += vec3(1.0, 0.95, 0.85) * ring(d, 0.03 + q * 0.12, 0.02) * (1.0 - q) * 2.0;
-    } else if (t == 10) {
-      col += vec3(1.0, 0.8, 0.5) * ring(d, 0.24, 0.012) * 0.6;
     } else if (t == 11) {
       col += vec3(1.0, 0.62, 0.55) * (ring(d, 0.26 + q * 0.05, 0.012) * (0.35 + 0.35 * q));
-    } else if (t == 12) {
-      float f = fract(atan(dm.y, dm.x) * 36.0 / (2.0 * PI) - uTime * 0.04);
-      float e = px * 36.0 / (2.0 * PI * max(d, 0.05));
-      float dash = aaStep(0.5, f, e) * (1.0 - aaStep(1.0 - e, f, e));
-      col += vec3(1.0, 0.78, 0.35) * ring(d, q, 0.011) * dash * 0.45;
     }
   }
 

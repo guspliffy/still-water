@@ -427,23 +427,13 @@ export class PondView implements PondRenderer {
       g.arc(p.x, p.y, R, a0, a1).stroke({ width: 1.5, color: 0xcfd8ea, alpha: ok ? 0.22 : 0.08 });
     }
     g.circle(p.x, p.y, 7).stroke({ width: 2, color: 0xffffff, alpha: ok ? 0.6 : 0.2 });
-    if (!ok) return;
-    this.sim.lanterns.forEach((l, i) => {
-      if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
-      const at = this.sim.lanternPos(i, this.sim.time);
-      if (this.sim.reaches(p, at)) {
-        g.circle(at.x, at.y, LANTERN_R + 7).stroke({ width: 1.5, color: COLORS.warm, alpha: 0.45 });
-      }
-    });
+    // Only the stone's own reach circle; a gold that dropping now would light glows in pulses instead.
+    if (!ok || !tuning.assist.goldMatchPreview) return;
+    const pulse = 0.5 + 0.5 * Math.sin(now * Math.PI * 2 * tuning.feel.goldMatchPulseHz);
     for (const gp of this.goldPreview) {
+      if (!gp.match) continue;
       const l = this.sim.pond.lanterns[gp.lantern];
-      if (gp.match && tuning.assist.goldMatchPreview) {
-        const pulse = 0.6 + 0.4 * Math.sin(now * 12);
-        g.circle(l.x, l.y, 32).stroke({ width: 3, color: COLORS.gold, alpha: 0.9 * pulse });
-        g.circle(l.x, l.y, 40).stroke({ width: 1.5, color: COLORS.gold, alpha: 0.4 * pulse });
-      } else {
-        g.circle(l.x, l.y, 30).stroke({ width: 1.5, color: COLORS.gold, alpha: 0.3 });
-      }
+      g.circle(l.x, l.y, 30).fill({ color: COLORS.gold, alpha: 0.12 + 0.25 * pulse });
     }
   }
 
