@@ -148,6 +148,7 @@ export class Pond3D implements PondRenderer {
   previewAt: Vec | null = null;
   goldPreview: GoldPreview[] = [];
   targets: Vec[] = [];
+  ghost = false;
 
   private renderer: WebGLRenderer;
   private scene = new Scene();
@@ -484,7 +485,7 @@ export class Pond3D implements PondRenderer {
       const ok = sim.canDropAt(pp) && sim.stonesLeft > 0;
       const sp = this.toScene(pp);
       u.uPreview.value.set(sp.x, sp.z, sim.p.maxRadius * S, ok ? 1 : 0.35);
-      u.uMeet.value = ok && tuning.assist.meetPreview ? 1 : 0;
+      u.uMeet.value = ok && tuning.assist.meetPreview && !this.ghost ? 1 : 0;
       u.uWinW.value = sim.p.speed * sim.p.goldWindow * S;
       if (ok) {
         sim.lanterns.forEach((l, i) => {

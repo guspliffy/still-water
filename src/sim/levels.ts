@@ -1,8 +1,8 @@
-import { generatePond, type GenParams } from './generator';
+import { generatePond, type Features, type GenParams } from './generator';
 import type { PondDef, SimParams } from './types';
 
-/** Hand-made opening ponds that teach one idea each, wordlessly. GDD §5. */
-export const TUTORIAL: PondDef[] = [
+/** Hand-made ponds that teach one idea each, wordlessly. GDD §5. */
+const TEACHING: PondDef[] = [
   {
     id: 't1',
     title: 'First light',
@@ -85,7 +85,20 @@ export const TUTORIAL: PondDef[] = [
   },
 ];
 
-/** Pond n (0-based). After the tutorial, ponds are generated from a fixed seed per index. */
+/** Lessons before the map teach the basics only: one stone, rings, plain lanterns. */
+export const TUTORIAL: PondDef[] = TEACHING.slice(0, 2);
+
+/**
+ * Intro ponds keyed by 0-based level: the first visit to that stop plays its intro once, then
+ * the level. Each new idea arrives where it is first used. GDD §7.1.
+ */
+export const INTROS: Record<number, PondDef> = { 0: TEACHING[2], 3: TEACHING[3], 6: TEACHING[4] };
+
+/** Generated ponds only use an idea from the level that introduces it. */
+export function featuresAt(level: number): Features {
+  return { echo: level >= 3, rocks: level >= 6 };
+}
+
 /** Names for the twelve stops on the map; beyond them the pond opens into endless water. */
 export const LEVEL_NAMES = [
   'Reed Bend', 'Moss Steps', 'Willow Shade', 'Frog Stone', 'Lotus Bay', 'Misty Weir',
@@ -100,6 +113,7 @@ export const OPEN_WATER = 'Open water';
 export function pondAt(index: number, difficulty: number, sp: SimParams, gp: GenParams): PondDef {
   if (index < TUTORIAL.length) return TUTORIAL[index];
   const level = index - TUTORIAL.length;
-  const pond = generatePond(1000 + index, difficulty, sp, gp);
+  // Seeds kept from when there were five lessons, so level ponds didn't change with the move.
+  const pond = generatePond(1005 + level, difficulty, sp, gp, featuresAt(level));
   return { ...pond, id: `level-${level + 1}-d${difficulty}`, title: LEVEL_NAMES[level] ?? OPEN_WATER };
 }

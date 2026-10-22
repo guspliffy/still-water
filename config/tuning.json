@@ -41,7 +41,9 @@
     "cascadeNoteWindow": 1.6,
     "sfxVolume": 0.7,
     "ambientVolume": 0.18,
-    "haptics": true
+    "haptics": true,
+    "replaySpeed": 0.5,
+    "replayAimLead": 0.4
   },
   "sim": {
     "stepHz": 120

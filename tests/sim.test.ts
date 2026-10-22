@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generatePond, recipe } from '../src/sim/generator';
 import { distToSegment, insidePond, isOccluded } from '../src/sim/geometry';
-import { TUTORIAL } from '../src/sim/levels';
+import { INTROS, pondAt, TUTORIAL } from '../src/sim/levels';
 import { Sim, runSolution, type SimEvent } from '../src/sim/sim';
 import type { PondDef } from '../src/sim/types';
 import { genParams, simParams } from '../src/tuning';
@@ -88,8 +88,8 @@ describe('sim', () => {
   });
 
   it('echo lanterns cascade', () => {
-    const sim = new Sim(TUTORIAL[3], sp);
-    const s = TUTORIAL[3].solution[0];
+    const sim = new Sim(INTROS[3], sp);
+    const s = INTROS[3].solution[0];
     sim.dropStone(s);
     const ev = runFor(sim, 8);
     expect(ev.filter((e) => e.type === 'light').length).toBe(5);
@@ -112,7 +112,7 @@ describe('sim', () => {
 });
 
 describe('ponds', () => {
-  it.each(TUTORIAL.map((p) => [p.id, p] as const))('tutorial %s is solvable at par', (_id, p) => {
+  it.each([...TUTORIAL, ...Object.values(INTROS)].map((p) => [p.id, p] as const))('teaching pond %s is solvable at par', (_id, p) => {
     expect(p.solution.length).toBe(p.par);
     expect(runSolution(p, sp, p.solution).done).toBe('complete');
   });
@@ -127,6 +127,16 @@ describe('ponds', () => {
       }
     }
     expect(generatePond(42, 5, sp, gp)).toEqual(generatePond(42, 5, sp, gp));
+  });
+
+  it('keeps echo and rocks out of levels before their intro', () => {
+    for (let level = 0; level < 12; level++) {
+      for (const d of [1, 4, 8]) {
+        const p = pondAt(TUTORIAL.length + level, d, sp, gp);
+        if (level < 3) expect(p.lanterns.some((l) => l.kind === 'echo')).toBe(false);
+        if (level < 6) expect(p.rocks.length).toBe(0);
+      }
+    }
   });
 });
 

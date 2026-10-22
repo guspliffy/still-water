@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { afterComplete, afterSkip, difficultyFor, freshProgress, starsFor, tierAt, type Progress } from '../src/progress';
+import { afterComplete, afterSkip, difficultyFor, freshProgress, migrateFiveLessons, starsFor, tierAt, type Progress } from '../src/progress';
 import { TUTORIAL } from '../src/sim/levels';
 
 const lp = { count: 12, baseStart: 1.2, baseStep: 0.65, tierStep: 1.5, startTier: 1, twoStarsToEase: 2, maxDifficulty: 10 };
 const T = TUTORIAL.length;
-const at = (index: number, tier = 1, twoStarStreak = 0): Progress => ({ index, reached: index, tier, twoStarStreak, best: {} });
+const at = (index: number, tier = 1, twoStarStreak = 0): Progress => ({ index, reached: index, tier, twoStarStreak, best: {}, introsDone: [] });
 
 describe('progress', () => {
   it('counts every throw: 3 stars only for a perfect solve', () => {
@@ -42,5 +42,17 @@ describe('progress', () => {
     const after = afterComplete(replay, 3, lp);
     expect(after).toMatchObject({ index: T + 2, tier: p.tier });
     expect(after.best[0]).toEqual({ stars: 3, tier: 1 });
+  });
+  it('keeps intros seen through level changes', () => {
+    const p = { ...at(T, 1), introsDone: [0] };
+    expect(afterComplete(p, 3, lp).introsDone).toEqual([0]);
+    expect(afterSkip(p).introsDone).toEqual([0]);
+  });
+  it('moves five-lesson saves to the same level with intros seen', () => {
+    const old = { index: 8, reached: 9, tier: 2, twoStarStreak: 1, best: { 3: { stars: 2, tier: 1 } } };
+    const p = migrateFiveLessons(old, freshProgress(lp));
+    expect(p).toMatchObject({ index: T + 3, reached: T + 4, tier: 2, best: old.best, introsDone: [0, 3, 6] });
+    const mid = migrateFiveLessons({ ...old, index: 3, reached: 3, best: {} }, freshProgress(lp));
+    expect(mid).toMatchObject({ index: T, reached: T, introsDone: [] });
   });
 });

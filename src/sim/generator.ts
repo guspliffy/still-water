@@ -11,14 +11,23 @@ export interface GenParams {
   maxDifficulty: number;
 }
 
+/** Which ideas a pond may use; levels unlock them one at a time. */
+export interface Features {
+  echo: boolean;
+  rocks: boolean;
+}
+
+const ALL: Features = { echo: true, rocks: true };
+
 /** What a difficulty level asks of the generator. Rules never change, only the pond. */
-export function recipe(difficulty: number) {
+export function recipe(difficulty: number, features: Features = ALL) {
   const d = Math.max(1, Math.round(difficulty));
+  const echo = features.echo && d >= 3 ? 1 + Math.floor((d - 3) / 4) : 0;
   return {
     stones: Math.min(4, 2 + Math.floor((d - 1) / 3)),
     gold: d >= 6 ? 2 : 1,
-    echo: d >= 3 ? 1 + Math.floor((d - 3) / 4) : 0,
-    rocks: d >= 4 ? 1 + Math.floor((d - 4) / 4) : 0,
+    echo,
+    rocks: features.rocks && d >= 4 ? 1 + Math.floor((d - 4) / 4) : 0,
     plain: Math.min(6, 1 + Math.floor(d / 2)),
     // Largest gap between the solution's drops: 0 means the golds sit on the midline between stones.
     maxDelay: d <= 2 ? 0.1 : Math.min(0.9, 0.1 + 0.1 * (d - 2)),
@@ -30,18 +39,18 @@ export function recipe(difficulty: number) {
  * their rings will be, gold lanterns where two rings arrive together. The solution is verified
  * by simulation, so every pond is solvable at par.
  */
-export function generatePond(seed: number, difficulty: number, sp: SimParams, gp: GenParams): PondDef {
+export function generatePond(seed: number, difficulty: number, sp: SimParams, gp: GenParams, features: Features = ALL): PondDef {
   for (let attempt = 0; attempt < 80; attempt++) {
-    const pond = tryGenerate(seed * 7919 + attempt, difficulty, sp, gp);
+    const pond = tryGenerate(seed * 7919 + attempt, difficulty, sp, gp, features);
     if (pond) return pond;
   }
   // Very unlikely; fall back to an easier recipe rather than fail.
-  return generatePond(seed + 1, Math.max(1, difficulty - 1), sp, gp);
+  return generatePond(seed + 1, Math.max(1, difficulty - 1), sp, gp, features);
 }
 
-function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenParams): PondDef | null {
+function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenParams, features: Features): PondDef | null {
   const rand = rng(seed);
-  const rc = recipe(difficulty);
+  const rc = recipe(difficulty, features);
   const R = sp.maxRadius;
   const inside = (p: Vec, m: number) => insidePond(p, sp.width, sp.height, sp.cornerRadius, m);
   const randPoint = (m: number): Vec => {

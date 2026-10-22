@@ -15,6 +15,8 @@ export interface PondRenderer {
   previewAt: Vec | null;
   goldPreview: GoldPreview[];
   targets: Vec[];
+  /** True while the Watch replay aims for the player: reach circle only, no meeting band. */
+  ghost: boolean;
   build(sim: Sim): void;
   layout(screenW: number, screenH: number, top: number, bottom: number): void;
   /** Screen point to pond coordinates. */

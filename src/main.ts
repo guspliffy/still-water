@@ -2,10 +2,10 @@ import { Audio, haptic } from './audio/audio';
 import { afterComplete, afterSkip, difficultyFor, freshProgress, isLesson, levelOf, loadProgress, saveProgress, starsFor, tierAt, totalStars, type Progress } from './progress';
 import type { PondRenderer } from './render/renderer';
 import { computeGoldPreview } from './render/renderer';
-import { pondAt, TUTORIAL } from './sim/levels';
+import { INTROS, LEVEL_NAMES, pondAt, TUTORIAL } from './sim/levels';
 import { mapHtml } from './ui/map';
 import { Sim, type SimEvent } from './sim/sim';
-import type { PondDef, Vec } from './sim/types';
+import type { PondDef, StoneDrop, Vec } from './sim/types';
 import { genParams, levelParams, simParams, tuning } from './tuning';
 import { Coach, ICONS, POND_CARDS } from './ui/coach';
 import { createDevPanel } from './ui/devpanel';
@@ -30,7 +30,13 @@ async function start() {
   let fails = 0;
   // Every stone thrown on this level, retries included; stars are counted from this.
   let throws = 0;
-  let showSolution = false;
+  // Lily pads revealed on this level, one per request (GDD §5).
+  let hintCount = 0;
+  // First visit to a stop that introduces a new idea: its intro pond plays before the level.
+  let playingIntro = false;
+  // This attempt's stones, and the half-speed Watch replay of a settled attempt (GDD §4.1).
+  let attempt: StoneDrop[] = [];
+  let replay: { drops: StoneDrop[]; next: number; offset: number; over: boolean } | null = null;
   let acc = 0;
   let cascadeStep = 0;
   let lastLight = -10;
@@ -40,18 +46,19 @@ async function start() {
 
   // ---------- coaching ----------
   let sayTimer = 0;
+  const say = (text: string) => {
+    const el = $('coach-text');
+    if (el.textContent === text) return;
+    el.classList.remove('show');
+    clearTimeout(sayTimer);
+    sayTimer = window.setTimeout(() => {
+      el.textContent = text;
+      if (text) el.classList.add('show');
+    }, 220);
+  };
   const coach = new Coach(
     {
-      say: (text) => {
-        const el = $('coach-text');
-        if (el.textContent === text) return;
-        el.classList.remove('show');
-        clearTimeout(sayTimer);
-        sayTimer = window.setTimeout(() => {
-          el.textContent = text;
-          if (text) el.classList.add('show');
-        }, 220);
-      },
+      say,
       point: (targets) => {
         view.targets = targets;
       },
@@ -63,13 +70,14 @@ async function start() {
 
   function load(regenerate = true) {
     timers.splice(0).forEach(clearTimeout);
-    if (regenerate) pond = pondAt(progress.index, difficultyFor(levelOf(progress.index), tierAt(progress, progress.index), levelParams()), simParams(), genParams());
-    const shown = showSolution ? { ...pond, hints: pond.solution.map(({ x, y }) => ({ x, y })) } : pond;
-    sim = new Sim(shown, simParams());
-    view.build(sim);
-    acc = 0;
-    cascadeStep = 0;
-    lastLight = -10;
+    if (regenerate) {
+      const level = levelOf(progress.index);
+      const intro = isLesson(progress.index) ? undefined : INTROS[level];
+      playingIntro = !!intro && !progress.introsDone.includes(level);
+      pond = intro && playingIntro ? intro : pondAt(progress.index, difficultyFor(level, tierAt(progress, progress.index), levelParams()), simParams(), genParams());
+    }
+    startSim();
+    attempt = [];
     hideOverlay();
     const tut = isLesson(progress.index);
     const n = levelOf(progress.index) + 1;
@@ -77,17 +85,63 @@ async function start() {
     $('mood').textContent = `★ ${totalStars(progress)}`;
     $('mood').style.display = tut ? 'none' : '';
     $('stones-caption').textContent = `stones · par ${pond.par}`;
-    renderStones();
     relayout();
-    coach.start(pond, progress.index, TUTORIAL.length);
+    coach.start(pond, progress.index, TUTORIAL.length, throws === 0);
     if (progress.index === 0 && !welcomed) {
       welcomed = true;
       showWelcome();
-    } else if (POND_CARDS[pond.id] && cardShownFor !== pond.id) {
-      cardShownFor = pond.id;
-      const c = POND_CARDS[pond.id];
-      showOverlay(`<div class="icon-row">${c.icon}</div><h2>${c.title}</h2><p class="lead">${c.body}</p><div class="row"><button class="primary" data-act="ok">Got it</button></div>`, { ok: hideOverlay }, hideOverlay, 'center');
+    } else showPondCard();
+  }
+
+  /** The one-sentence card before a pond that brings something new, shown once. */
+  function showPondCard() {
+    const c = POND_CARDS[pond.id];
+    if (!c || cardShownFor === pond.id) return;
+    cardShownFor = pond.id;
+    showOverlay(`<div class="icon-row">${c.icon}</div><h2>${c.title}</h2><p class="lead">${c.body}</p><div class="row"><button class="primary" data-act="ok">Got it</button></div>`, { ok: hideOverlay }, hideOverlay, 'center');
+  }
+
+  /** A fresh run of the current pond, with any revealed lily pads. */
+  function startSim() {
+    const shown = hintCount > 0 ? { ...pond, hints: pond.solution.slice(0, hintCount).map(({ x, y }) => ({ x, y })) } : pond;
+    sim = new Sim(shown, simParams());
+    view.build(sim);
+    acc = 0;
+    cascadeStep = 0;
+    lastLight = -10;
+    replay = null;
+    view.ghost = false;
+    renderStones();
+  }
+
+  /** Replays the settled attempt at half speed, aiming each stone just before it lands. */
+  function watch() {
+    timers.splice(0).forEach(clearTimeout);
+    hideOverlay();
+    const drops = attempt;
+    startSim();
+    // Skip the thinking time before the first stone, in whole steps so the replay stays exact.
+    const step = 1 / tuning.sim.stepHz;
+    const offset = Math.max(0, Math.floor((drops[0].t - tuning.feel.replayAimLead) / step)) * step;
+    replay = { drops, next: 0, offset, over: false };
+    view.targets = [];
+    say('Your last try, at half speed');
+  }
+
+  function feedReplay(r: NonNullable<typeof replay>) {
+    while (r.next < r.drops.length && r.drops[r.next].t <= sim.time + r.offset + 1e-9) {
+      const d = r.drops[r.next++];
+      if (sim.dropStone(d)) audio.plop(panOf(d.x));
+      renderStones();
     }
+  }
+
+  function endReplay() {
+    if (!replay || replay.over) return;
+    replay.over = true;
+    view.ghost = false;
+    say('');
+    showSettled();
   }
 
   function showWelcome() {
@@ -103,15 +157,17 @@ async function start() {
 
   function showHowTo() {
     const aim = isTouch ? 'Hold a finger down to aim, lift it to drop.' : 'Point to aim, click to drop.';
+    // Only what the player has met so far; the rest arrives along the map.
+    const met = (level: number) => progress.introsDone.includes(level) || (playingIntro && levelOf(progress.index) === level);
     showOverlay(
       `<h2>How to play</h2>
        <p class="lead">Tap the water to drop a stone. Its ripple lights every lantern it touches. Light them all to clear the pond.</p>
        <div class="legend">
          ${ICONS.ring}<div>Ripple<small>Spreads out to the dashed circle you see while aiming, then fades.</small></div>
          ${ICONS.plain}<div>Lantern<small>Lights when any ripple touches it.</small></div>
-         ${ICONS.echo}<div>Echo lantern<small>Lights, then sends out a smaller ripple of its own.</small></div>
-         ${ICONS.gold}<div>Gold lantern<small>Needs two ripples touching it within ${tuning.gold.window} s. The gold arc shows the time left.</small></div>
-         ${ICONS.rock}<div>Rock<small>Blocks ripples.</small></div>
+         ${met(3) ? `${ICONS.echo}<div>Echo lantern<small>Lights, then sends out a smaller ripple of its own.</small></div>` : ''}
+         ${met(0) ? `${ICONS.gold}<div>Gold lantern<small>Needs two ripples touching it within ${tuning.gold.window} s. The gold arc shows the time left.</small></div>` : ''}
+         ${met(6) ? `${ICONS.rock}<div>Rock<small>Blocks ripples.</small></div>` : ''}
        </div>
        <p>${aim} Use par or fewer stones for three stars.</p>
        <div class="row"><button class="primary" data-act="ok">Got it</button></div>`,
@@ -139,7 +195,7 @@ async function start() {
     progress = p;
     fails = 0;
     throws = 0;
-    showSolution = false;
+    hintCount = 0;
     saveProgress(progress);
     load();
   }
@@ -169,8 +225,10 @@ async function start() {
     const { html, playable } = mapHtml(progress, tuning.levels.count);
     const play = (index: number) => {
       // Going back to the pond you're in the middle of just closes the map.
-      if (index === progress.index && sim.done === 'playing') hideOverlay();
-      else goTo({ ...progress, index });
+      if (index === progress.index && sim.done === 'playing') {
+        hideOverlay();
+        showPondCard();
+      } else goTo({ ...progress, index });
     };
     const actions: Record<string, () => void> = { continue: () => play(progress.reached) };
     for (const i of playable) actions[`go${i}`] = () => play(i);
@@ -178,6 +236,22 @@ async function start() {
   }
 
   function onComplete(stonesUsed: number) {
+    if (playingIntro) {
+      // An intro pond has no stars: it teaches the idea, then the level itself begins.
+      audio.complete(3);
+      const level = levelOf(progress.index);
+      const next = () => goTo({ ...progress, introsDone: [...progress.introsDone, level] });
+      timers.push(
+        window.setTimeout(() => {
+          showOverlay(
+            `<h2>Still.</h2><p>Now try it on ${LEVEL_NAMES[level] ?? 'open water'}.</p><div class="row"><button class="primary" data-act="next">Next</button></div>`,
+            { next },
+            next,
+          );
+        }, tuning.feel.completeDelayMs),
+      );
+      return;
+    }
     const stars = starsFor(throws, pond.par);
     audio.complete(stars);
     const diff = throws - pond.par;
@@ -190,6 +264,8 @@ async function start() {
       // Leaving the lessons: show the map once so the path ahead is clear.
       if (isLesson(before.index) && !isLesson(p.index)) {
         goTo(p);
+        // The map covers the first intro's card; it shows when the player continues.
+        cardShownFor = '';
         showMap(true);
       } else goTo(p);
     };
@@ -219,32 +295,34 @@ async function start() {
   function onStilled() {
     fails++;
     audio.stilled();
-    if (progress.index < TUTORIAL.length) {
+    if (isLesson(progress.index) || playingIntro) {
       // Teaching ponds never show a failure screen; they reset with a hint line.
       coach.onRetry();
-      if (pond.id === 't5') showSolution = true;
+      if (pond.id === 't5') hintCount = pond.solution.length;
       timers.push(window.setTimeout(() => load(false), 1800));
       return;
     }
+    timers.push(window.setTimeout(showSettled, 700));
+  }
+
+  /** The failure card: watch the try back, take one lily pad after 2 fails, skip after 3. */
+  function showSettled() {
     const lit = sim.lanterns.filter((l) => l.lit).length;
-    const canHint = !showSolution && progress.index >= 1;
+    const canHint = fails >= 2 && hintCount < pond.solution.length;
     const retry = () => load(false);
-    timers.push(
-      window.setTimeout(() => {
-        showOverlay(
-          `<h2>The water settles</h2><p>${lit} of ${sim.lanterns.length} lanterns lit</p>
-           <div class="row">${canHint && fails >= 1 ? '<button data-act="hint">Show lily pads</button>' : ''}${fails >= 2 ? '<button data-act="skip">Skip</button>' : ''}<button class="primary" data-act="retry">Try again</button></div>`,
-          {
-            retry,
-            hint: () => {
-              showSolution = true;
-              load(false);
-            },
-            skip: () => goTo(afterSkip(progress)),
-          },
-          retry,
-        );
-      }, 700),
+    showOverlay(
+      `<h2>The water settles</h2><p>${lit} of ${sim.lanterns.length} lanterns lit</p>
+       <div class="row"><button data-act="watch">▶ Watch</button>${canHint ? `<button data-act="hint">${hintCount ? 'One more lily pad' : 'Show a lily pad'}</button>` : ''}${fails >= 3 ? '<button data-act="skip">Skip</button>' : ''}<button class="primary" data-act="retry">Try again</button></div>`,
+      {
+        retry,
+        watch,
+        hint: () => {
+          hintCount++;
+          load(false);
+        },
+        skip: () => goTo(afterSkip(progress)),
+      },
+      retry,
     );
   }
 
@@ -253,6 +331,12 @@ async function start() {
   function handle(events: SimEvent[]) {
     for (const e of events) {
       view.onEvent(e);
+      if (replay) {
+        // The replay only shows and sounds; it never scores, coaches or ends the level.
+        if (e.type === 'light') audio[e.kind === 'gold' ? 'gold' : 'lantern'](0, panOf(sim.pond.lanterns[e.lantern].x));
+        if ((e.type === 'stilled' || e.type === 'complete') && !replay.over) timers.push(window.setTimeout(endReplay, 1200));
+        continue;
+      }
       coach.onEvent(e);
       switch (e.type) {
         case 'light': {
@@ -296,10 +380,12 @@ async function start() {
   let hover: Vec | null = null;
 
   function drop(p: Vec) {
-    if (overlay.classList.contains('show')) return;
+    if (overlay.classList.contains('show') || replay) return;
+    const t = sim.time;
     const r = sim.dropStone(p);
     if (r) {
       throws++;
+      attempt.push({ x: p.x, y: p.y, t });
       audio.plop(panOf(p.x));
       haptic(8);
       renderStones();
@@ -311,6 +397,8 @@ async function start() {
   canvas.addEventListener('pointerdown', (e) => {
     audio.unlock();
     if (overlay.classList.contains('show')) return;
+    // A tap during the replay skips to the end of it.
+    if (replay) return endReplay();
     const p = view.toWorld(e.clientX, e.clientY);
     if (e.pointerType === 'mouse') {
       if (e.button === 0) drop(p);
@@ -410,7 +498,7 @@ async function start() {
     },
     onJump: () => goTo({ ...progress, index: devState.index, reached: Math.max(progress.reached, devState.index), tier: devState.tier }),
     onShowSolution: () => {
-      showSolution = true;
+      hintCount = pond.solution.length;
       load(false);
     },
   });
@@ -444,14 +532,23 @@ async function start() {
     const dt = Math.min((t - last) / 1000, 0.1);
     last = t;
     const step = 1 / tuning.sim.stepHz;
-    acc += dt;
+    acc += dt * (replay ? tuning.feel.replaySpeed : 1);
     while (acc >= step) {
+      if (replay && !replay.over) feedReplay(replay);
       handle(sim.step(step));
       acc -= step;
     }
-    const pp = previewPoint();
-    view.previewAt = pp;
-    view.goldPreview = pp ? computeGoldPreview(sim, pp) : [];
+    if (replay) {
+      // The replay aims for you: the reach circle appears where the next stone is about to land.
+      const d = replay.over ? undefined : replay.drops[replay.next];
+      view.ghost = true;
+      view.previewAt = d && d.t - (sim.time + replay.offset) <= tuning.feel.replayAimLead ? d : null;
+      view.goldPreview = [];
+    } else {
+      const pp = previewPoint();
+      view.previewAt = pp;
+      view.goldPreview = pp ? computeGoldPreview(sim, pp) : [];
+    }
     view.render(sim.time + acc, dt);
     requestAnimationFrame(frame);
   };

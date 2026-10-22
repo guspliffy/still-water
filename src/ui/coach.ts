@@ -42,7 +42,8 @@ export class Coach {
     private readonly touch: boolean,
   ) {}
 
-  start(pond: PondDef, index: number, tutorialLength: number): void {
+  /** firstTry is false on a retry: by then a perfect solve is gone, so the par line stays quiet. */
+  start(pond: PondDef, index: number, tutorialLength: number, firstTry = true): void {
     this.pond = pond;
     this.drops = 0;
     const h = pond.hints;
@@ -72,12 +73,15 @@ export class Coach {
           this.v.point([]);
         }
         return;
-      default:
+      default: {
+        // The goal before the first throw, so par isn't hidden in the stone counter.
+        const perfect = firstTry ? `Perfect: ${pond.par} stone${pond.par > 1 ? 's' : ''} ★★★` : '';
         if (index === tutorialLength && !this.generatedIntroSeen) {
           this.generatedIntroSeen = true;
-          this.v.say('Every pond from here is new. Light them all with as few stones as you can.');
-        } else this.v.say('');
+          this.v.say(`New ponds from here. ${perfect}`);
+        } else this.v.say(perfect);
         this.v.point([]);
+      }
     }
   }
 
@@ -113,7 +117,7 @@ export class Coach {
         this.v.point([]);
         return;
       default:
-        if (this.drops === 1 && pond.id.startsWith('pond')) this.v.say('');
+        if (this.drops === 1) this.v.say('');
     }
   }
 

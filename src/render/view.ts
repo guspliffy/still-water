@@ -101,6 +101,7 @@ export class PondView implements PondRenderer {
   private scale = 1;
   previewAt: Vec | null = null;
   goldPreview: GoldPreview[] = [];
+  ghost = false;
   /** Teaching markers: pulsing "tap here" rings. */
   targets: Vec[] = [];
   /** Real-time clock (seconds) for idle motion that should keep going between ponds. */
