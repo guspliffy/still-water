@@ -96,14 +96,17 @@ describe('sim', () => {
     expect(ev.at(-1)?.type).toBe('complete');
   });
 
-  it('moon lanterns ignore stone rings and wake to an echo', () => {
+  it('moon lanterns ignore straight rings, even echoes, and wake to a bounce', () => {
     const moon = { x: 300, y: 400, kind: 'moon' as const };
-    const alone = new Sim(pond({ stones: 1, lanterns: [moon] }), sp);
+    const alone = new Sim(pond({ stones: 1, lanterns: [moon, { x: 300, y: 470, kind: 'echo' }] }), sp);
     alone.dropStone({ x: 300, y: 500 });
-    expect(runFor(alone, 4).some((e) => e.type === 'stilled')).toBe(true);
-    const withEcho = new Sim(pond({ stones: 1, lanterns: [moon, { x: 300, y: 540, kind: 'echo' }] }), sp);
-    withEcho.dropStone({ x: 300, y: 600 });
-    expect(runFor(withEcho, 6).at(-1)?.type).toBe('complete');
+    expect(runFor(alone, 4).some((e) => e.type === 'light' && e.lantern === 0)).toBe(false);
+    const bounced = new Sim(pond({ stones: 1, lanterns: [moon], walls: [{ ax: 200, ay: 330, bx: 400, by: 330 }] }), sp);
+    bounced.dropStone({ x: 300, y: 500 });
+    const ev = runFor(bounced, 4);
+    expect(ev.at(-1)?.type).toBe('complete');
+    // Lit by the bounce (500 -> 330 -> 400 = 240), not the straight pass at 100.
+    expect(ev.find((e) => e.type === 'light')!.t).toBeCloseTo(240 / sp.speed, 2);
   });
 
   it('mirror walls block rings and bounce them back once', () => {
@@ -112,7 +115,7 @@ describe('sim', () => {
     behind.dropStone({ x: 300, y: 550 });
     expect(runFor(behind, 4).some((e) => e.type === 'stilled')).toBe(true);
     // A lantern behind a rock is reached only by the bounce, later than a straight ring would.
-    const bank = INTROS[12];
+    const bank = INTROS[9];
     const sim = new Sim(bank, sp);
     sim.dropStone(bank.solution[0]);
     const ev = runFor(sim, 5);
@@ -177,8 +180,8 @@ describe('ponds', () => {
         const p = pondAt(TUTORIAL.length + level, d, sp, gp);
         if (level < 3) expect(p.lanterns.some((l) => l.kind === 'echo')).toBe(false);
         if (level < 6) expect(p.rocks.length).toBe(0);
-        if (level < 9) expect(p.lanterns.some((l) => l.kind === 'moon')).toBe(false);
-        if (level < 12) expect(p.walls ?? []).toEqual([]);
+        if (level < 12) expect(p.lanterns.some((l) => l.kind === 'moon')).toBe(false);
+        if (level < 9) expect(p.walls ?? []).toEqual([]);
         if (level < 16) expect(p.lanterns.some((l) => l.drift)).toBe(false);
       }
     }

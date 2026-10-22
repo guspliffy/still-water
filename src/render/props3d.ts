@@ -365,7 +365,7 @@ function crescentShape(r1: number, cx: number, cy: number, r2: number): Shape {
   return s;
 }
 
-/** Pale crescent moon on a stone post, with a blue bead on its tip: it answers to echo light. */
+/** Pale crescent moon on a stone post, with a silver bead on its tip: it answers to reflected light. */
 function moonLantern(): LanternProp {
   const root = new Group();
   const base = outlined(new Mesh(new CylinderGeometry(0.12, 0.14, 0.05, 14), toon(0x7d8499)));
@@ -385,7 +385,7 @@ function moonLantern(): LanternProp {
   // Opening up and to the right, tipped back a little so it reads from the tilted camera.
   crescent.rotation.set(-0.3, 0, -0.45);
   body.add(crescent);
-  const bead = new Mesh(new SphereGeometry(0.016, 10, 8), toon(0x7fe0ff, { emissive: new Color(0.35, 0.82, 1.0), emissiveIntensity: 0.6 }));
+  const bead = new Mesh(new SphereGeometry(0.016, 10, 8), toon(0xeef3ff, { emissive: new Color(0.7, 0.78, 0.95), emissiveIntensity: 0.6 }));
   bead.position.set(0.13, 0.13, 0.02);
   body.add(bead);
   root.add(body);

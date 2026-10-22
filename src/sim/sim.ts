@@ -153,8 +153,8 @@ export class Sim {
     this.lanterns.forEach((l, i) => {
       if (i === rip.lantern) return;
       if (l.lit) return;
-      // Moon lanterns sleep through stone rings; only an echo's ring wakes them.
-      if (l.def.kind === 'moon' && rip.source !== 'echo') return;
+      // Moon lanterns sleep through straight rings; only a ring bounced off a mirror wall wakes them.
+      if (l.def.kind === 'moon' && rip.mirror < 0) return;
       if (l.def.drift) {
         const t = this.driftHit(rip, i, ta, tb);
         if (t !== null) out.push({ t, lantern: i, ripple: rip });

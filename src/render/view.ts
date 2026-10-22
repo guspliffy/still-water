@@ -527,11 +527,11 @@ export class PondView implements PondRenderer {
       return;
     }
     if (v.kind === 'moon') {
-      // Pale crescent: a shape of its own, lit only by echo rings.
+      // Pale crescent: a shape of its own, lit only by bounced rings.
       g.circle(0, 0, r + 2).fill({ color: v.lit ? 0xdcdcff : COLORS.unlitFill });
       if (!v.lit) g.stroke({ width: 2, color: 0x8c90b8 });
       g.circle(r * 0.5, -r * 0.35, r * 0.85).cut();
-      g.circle(r * 0.75, -r * 0.75, 2.5).fill({ color: COLORS.echoLit, alpha: v.lit ? 1 : 0.6 });
+      g.circle(r * 0.75, -r * 0.75, 2.5).fill({ color: 0xffffff, alpha: v.lit ? 1 : 0.6 });
       return;
     }
     if (v.lit) {

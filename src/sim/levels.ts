@@ -87,12 +87,12 @@ const TEACHING: PondDef[] = [
     id: 't6',
     title: 'Moonlight',
     lanterns: [
-      { x: 300, y: 330, kind: 'moon' },
-      { x: 300, y: 470, kind: 'echo' },
-      { x: 165, y: 640, kind: 'plain' },
-      { x: 435, y: 640, kind: 'plain' },
+      { x: 300, y: 470, kind: 'moon' },
+      { x: 175, y: 650, kind: 'plain' },
+      { x: 425, y: 650, kind: 'plain' },
     ],
     rocks: [],
+    walls: [{ ax: 190, ay: 400, bx: 410, by: 400 }],
     par: 1,
     stones: 3,
     hints: [{ x: 300, y: 570 }],
@@ -139,18 +139,18 @@ export const TUTORIAL: PondDef[] = TEACHING.slice(0, 2);
  * Intro ponds keyed by 0-based level: the first visit to that stop plays its intro once, then
  * the level. Each new idea arrives where it is first used. GDD §7.1.
  */
-export const INTROS: Record<number, PondDef> = { 0: TEACHING[2], 3: TEACHING[3], 6: TEACHING[4], 9: TEACHING[5], 12: TEACHING[6], 16: TEACHING[7] };
+export const INTROS: Record<number, PondDef> = { 0: TEACHING[2], 3: TEACHING[3], 6: TEACHING[4], 9: TEACHING[6], 12: TEACHING[5], 16: TEACHING[7] };
 
 /** Generated ponds only use an idea from the level that introduces it. */
 export function featuresAt(level: number): Features {
-  return { echo: level >= 3, rocks: level >= 6, moon: level >= 9, walls: level >= 12, drift: level >= 16 };
+  return { echo: level >= 3, rocks: level >= 6, moon: level >= 12, walls: level >= 9, drift: level >= 16 };
 }
 
 /** Names for the stops on the map; beyond them the pond opens into endless water. */
 export const LEVEL_NAMES = [
   'Reed Bend', 'Moss Steps', 'Willow Shade', 'Frog Stone', 'Lotus Bay', 'Misty Weir',
-  'Cedar Shrine', 'Firefly Hollow', 'Old Bridge', 'Moon Basin', 'Heron Isle', 'Koi Pool',
-  'Mirror Lake', 'Bamboo Gate', 'Rain Hollow', 'Stone Garden', 'Drifting Reeds', 'Ferry Steps',
+  'Cedar Shrine', 'Firefly Hollow', 'Old Bridge', 'Mirror Lake', 'Heron Isle', 'Koi Pool',
+  'Moon Basin', 'Bamboo Gate', 'Rain Hollow', 'Stone Garden', 'Drifting Reeds', 'Ferry Steps',
   'Owl Hill', 'Cloud Pool', 'Star Pond', 'Silver Reach', 'Night Garden', 'Still Water',
 ];
 export const OPEN_WATER = 'Open water';

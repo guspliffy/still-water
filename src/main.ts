@@ -171,8 +171,8 @@ async function start() {
          ${met(3) ? `${ICONS.echo}<div>Echo lantern<small>Lights, then sends out a smaller ripple of its own.</small></div>` : ''}
          ${met(0) ? `${ICONS.gold}<div>Gold lantern<small>Needs two ripples touching it within ${tuning.gold.window} s. The gold arc shows the time left.</small></div>` : ''}
          ${met(6) ? `${ICONS.rock}<div>Rock<small>Blocks ripples.</small></div>` : ''}
-         ${met(9) ? `${ICONS.moon}<div>Moon lantern<small>Only an echo lantern’s ripple can light it.</small></div>` : ''}
-         ${met(12) ? `${ICONS.wall}<div>Mirror wall<small>Blocks ripples and bounces them back.</small></div>` : ''}
+         ${met(9) ? `${ICONS.wall}<div>Mirror wall<small>Blocks ripples and bounces them back.</small></div>` : ''}
+         ${met(12) ? `${ICONS.moon}<div>Moon lantern<small>Only a ripple bounced off a mirror wall can light it.</small></div>` : ''}
          ${met(16) ? `${ICONS.drift}<div>Drifting lantern<small>Glides along its dotted path. Rocks can hide it on the way.</small></div>` : ''}
        </div>
        <p>${aim} Use par or fewer stones for three stars.</p>

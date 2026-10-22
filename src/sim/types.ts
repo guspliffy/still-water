@@ -5,7 +5,7 @@ export interface Vec {
 
 /**
  * plain lights on any ring; echo lights and sends its own small ring; gold needs two rings inside
- * the window; moon lights only from an echo's ring.
+ * the window; moon lights only from a ring bounced off a mirror wall (moonlight is reflected light).
  */
 export type LanternKind = 'plain' | 'echo' | 'gold' | 'moon';
 
