@@ -40,7 +40,7 @@ export function applySettings(s: Settings): void {
 
 export const canVibrate = () => 'vibrate' in navigator;
 
-export function settingsHtml(s: Settings): string {
+export function settingsHtml(s: Settings, opts: { fullScreen: boolean; map: boolean }): string {
   const row = (key: keyof Settings, label: string, note: string) =>
     `<div class="set-row"><div>${label}<small>${note}</small></div><button class="toggle ${s[key] ? 'on' : ''}" data-act="${key}" aria-pressed="${s[key]}">${s[key] ? 'On' : 'Off'}</button></div>`;
   return `<h2>Settings</h2>
@@ -48,7 +48,13 @@ export function settingsHtml(s: Settings): string {
       ${row('sound', 'Sound', 'Music and lantern chimes')}
       ${canVibrate() ? row('vibration', 'Vibration', 'A light tap on each stone') : ''}
       ${row('timingHelp', 'Timing help', 'Shows where ripples will meet while you aim')}
+      ${opts.fullScreen ? `<div class="set-row"><div>Full screen<small>Also with the F key</small></div><button class="toggle" data-act="full">Open</button></div>` : ''}
     </div>
     <div class="row"><button class="primary" data-act="done">Done</button></div>
-    <button class="quiet" data-act="tune">Developer tuning</button>`;
+    <div class="quiet-row">
+      <button class="quiet" data-act="howto">How to play</button>
+      ${opts.map ? '<button class="quiet" data-act="map">Level map</button>' : ''}
+      <button class="quiet" data-act="lessons">Replay lessons</button>
+      <button class="quiet" data-act="tune">Developer tuning</button>
+    </div>`;
 }

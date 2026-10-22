@@ -287,7 +287,7 @@ export class Pond3D implements PondRenderer {
     this.water.uniforms.uRockCount.value = rocks.length;
     rocks.forEach((r, i) => {
       this.water.uniforms.uRock.value[i].set((r.x - W / 2) * S, (r.y - H / 2) * S, r.r * S);
-      const rock = makeRock(r.r * S, i);
+      const rock = makeRock(r.r * S, i, tuning.view3d.obstacleOutline);
       const rp = this.toScene(r);
       rock.position.set(rp.x, 0.0, rp.z);
       rock.rotation.y = i * 1.7;
@@ -300,7 +300,7 @@ export class Pond3D implements PondRenderer {
       const a = this.toScene({ x: w.ax, y: w.ay });
       const b = this.toScene({ x: w.bx, y: w.by });
       this.water.uniforms.uWall.value[i].set(a.x, a.z, b.x, b.z);
-      const mesh = makeWall(Math.hypot(b.x - a.x, b.z - a.z), i);
+      const mesh = makeWall(Math.hypot(b.x - a.x, b.z - a.z), i, tuning.view3d.obstacleOutline);
       mesh.position.set((a.x + b.x) / 2, 0, (a.z + b.z) / 2);
       mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
       this.pondGroup.add(mesh);
@@ -343,6 +343,8 @@ export class Pond3D implements PondRenderer {
     this.bloom.strength = tuning.view3d.bloomStrength;
     this.bloom.radius = tuning.view3d.bloomRadius;
     this.bloom.threshold = tuning.view3d.bloomThreshold;
+    // Dev check (GDD §6): obstacles must still read against the water in greyscale.
+    this.renderer.domElement.style.filter = tuning.view3d.grayscaleCheck ? 'grayscale(1)' : '';
 
     const cam = this.camera;
     cam.fov = tuning.view3d.fovDeg;

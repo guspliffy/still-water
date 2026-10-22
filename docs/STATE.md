@@ -6,15 +6,16 @@
 
 **3D:** default renderer since 2026-10-21 (Jonny asked for a beautiful 3D experience); `?2d` keeps the flat version. Multisampled glow pass and pixel-aware shader lines keep edges clean; resolution steps down on its own if a phone drops below 40 fps.
 
-**HUD:** map, help, full screen (iPhone shows the Add to Home Screen tip), settings (sound, vibration, timing help). Labelled Retry pill beside the stones that pulses once stones run out.
+**HUD:** level name (the door to the map) and one gear at 70% opacity. Settings sheet: sound, vibration, timing help, full screen, plus How to play, Level map, Replay lessons, Developer tuning. Labelled Retry pill beside the stones that pulses once stones run out.
 
 **Alpha:** Jonny (2026-10-22) is taking both Still Water and Bloom to alpha. Plan: Claude Doc "Still Water: road to alpha" https://claude.ai/artifact/Cc4xjJrwVcqCbszjsxtsTA, with four phases: Understand, Satisfy, Depth, Alpha ready.
-Phase 1 progress: done = meeting band, missed lanterns pulse, Watch replay, intro ponds with generator features gated by level, one lily pad per hint (skip after 3 fails), par line at level start. Saves from the five-lesson layout migrate (key v3). Pulled forward from phase 3 at Jonny's ask (2026-10-22): moon lanterns, 24 levels, denser late ponds, basic settings. Mirror walls, moon lanterns (wake only to bounced rings, Jonny's pick 2026-10-22) and drifting lanterns done. Next = Jonny plays the new ideas; then phase 2 (ring crossing sparks, gold slow-down, sky lantern finale) and play data.
+Phase 1 progress: done = meeting band, missed lanterns pulse, Watch replay, intro ponds with generator features gated by level, one lily pad per hint (skip after 3 fails), par line at level start. Saves from the five-lesson layout migrate (key v3). Pulled forward from phase 3 at Jonny's ask (2026-10-22): moon lanterns, 24 levels, denser late ponds, basic settings. Mirror walls, moon lanterns (wake only to bounced rings, Jonny's pick 2026-10-22) and drifting lanterns done. Calmer late ponds (Fable, 2026-10-22, after Jonny found them overloaded): capped recipe table in tuning (max 10 lanterns), light budget (lanterns pop then settle and share a budget, soft-clamped water light), partner circles, dark mirror walls. Next = creative director review P1 (pond surroundings, portrait props, fonts and sheets), Jonny plays; then phase 2 (ring crossing sparks, gold slow-down, sky lantern finale) and play data.
 
 ## Open owner questions
 None open. Answered 2026-10-22: yes to mirror walls, moon lanterns, drifting lanterns; yes to anonymous play data; public link for testers; gold match preview stays as an option, on by default.
 
 ## Decisions
+- Overload is fixed by caps and a light budget, not by fewer ideas; difficulty rises through timing and combination (Fable, 2026-10-22).
 - Settings stay basic (Jonny, 2026-10-22): good defaults, player only toggles basics like sound.
 - More levels and more lanterns/obstacles per level (Jonny, 2026-10-22).
 - Three.js for the 3D view, sim untouched: the renderer interface let 2D and 3D share all game logic.

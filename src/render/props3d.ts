@@ -467,29 +467,30 @@ function lotusLantern(): LanternProp {
 }
 
 /**
- * Mirror wall: a low run of pale dressed stones capped with a polished silver strip, so it reads
- * as both an obstacle (light grey, easy to spot) and something rings bounce off. Lies along x.
+ * Mirror wall: a low run of dark dressed stones capped with a thin polished silver strip, so it reads
+ * as an obstacle without glowing like a tube, and the silver says rings bounce off it. Lies along x.
+ * `outline` scales the ink line: obstacles read heavier than decoration (GDD §6).
  */
-export function makeWall(length: number, seed: number): Group {
+export function makeWall(length: number, seed: number, outline = 1): Group {
   const g = new Group();
   const rand = rng(seed * 13 + 7);
   const n = Math.max(2, Math.round(length / 0.14));
   const blockLen = length / n;
-  const stone = toon(0xd9dce4);
+  const stone = toon(0x2e3540);
   for (let i = 0; i < n; i++) {
     const h = 0.11 + rand() * 0.03;
-    const b = outlined(new Mesh(new BoxGeometry(blockLen * 0.94, h, 0.1), stone), 0.005);
+    const b = outlined(new Mesh(new BoxGeometry(blockLen * 0.94, h, 0.1), stone), 0.005 * outline);
     b.position.set(-length / 2 + blockLen * (i + 0.5), h / 2 - 0.02, (rand() - 0.5) * 0.008);
     b.rotation.y = (rand() - 0.5) * 0.04;
     g.add(b);
   }
-  const silver = toon(0xe4ebf7, { emissive: new Color(0.7, 0.78, 0.95), emissiveIntensity: 0.06 });
-  const cap = outlined(new Mesh(new BoxGeometry(length + 0.02, 0.025, 0.06), silver), 0.004);
+  const silver = toon(0xc4ccd8);
+  const cap = outlined(new Mesh(new BoxGeometry(length + 0.02, 0.02, 0.05), silver), 0.004 * outline);
   cap.position.y = 0.15;
   g.add(cap);
   // Rounded end posts.
   for (const x of [-length / 2, length / 2]) {
-    const post = outlined(new Mesh(new CylinderGeometry(0.055, 0.06, 0.19, 12), stone), 0.005);
+    const post = outlined(new Mesh(new CylinderGeometry(0.055, 0.06, 0.19, 12), stone), 0.005 * outline);
     post.position.set(x, 0.075, 0);
     g.add(post);
   }
@@ -538,7 +539,7 @@ function waterLily(color: number): Group {
 }
 
 /** Rounded grey boulder with moss on top, sitting low in the water. */
-export function makeRock(radius: number, seed: number): Mesh {
+export function makeRock(radius: number, seed: number, outline = 1): Mesh {
   const geo = new IcosahedronGeometry(1, 3);
   const pos = geo.getAttribute('position') as BufferAttribute;
   const rand = rng(seed * 13 + 7);
@@ -562,7 +563,7 @@ export function makeRock(radius: number, seed: number): Mesh {
   }
   geo.setAttribute('color', new BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  const m = outlined(new Mesh(geo, toon(0xffffff, { vertexColors: true })), 0.01);
+  const m = outlined(new Mesh(geo, toon(0xffffff, { vertexColors: true })), 0.01 * outline);
   return m;
 }
 

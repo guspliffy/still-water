@@ -10,7 +10,7 @@ TypeScript, Vite, Three.js (3D view, default), PixiJS 8 (2D view via `?2d`), Vit
 - `npm test` (Vitest), `npm run typecheck`, `npm run build` (typecheck + production build to dist/)
 
 ## Folder map
-- `config/tuning.json`: every gameplay number. Code reads `tuning` from `src/tuning.ts`; never hardcode a value.
+- `config/tuning.json`: every gameplay number. Code reads `tuning` from `src/tuning.ts`; never hardcode a value. `generator.recipe` is the per-difficulty level table.
 - `src/sim/`: pure simulation, no DOM or Pixi. `sim.ts` (rings, hits, gold windows, echoes, end states), `geometry.ts`, `generator.ts` (backwards pond generator with verified solution), `levels.ts` (lessons, intro ponds, `featuresAt`, `pondAt`).
 - `src/render/renderer.ts`: `PondRenderer` interface both views implement, plus `computeGoldPreview`.
 - `src/render/view3d.ts` + `water.ts` + `props3d.ts` (toon-shaded lanterns, rocks, lily pads, bushes): Three.js scene; one water shader draws ripples, reflections and surface marks; bloom via EffectComposer.

@@ -82,7 +82,9 @@ async function start() {
     hideOverlay();
     const tut = isLesson(progress.index);
     const n = levelOf(progress.index) + 1;
-    $('title').innerHTML = tut ? `Lesson <b>${progress.index + 1}</b> · ${pond.title}` : `Level <b>${n}</b> · ${pond.title}`;
+    // Outside the lessons the level name is the door to the map (GDD §7).
+    $('title').innerHTML = tut ? `Lesson <b>${progress.index + 1}</b> · ${pond.title}` : `Level <b>${n}</b> · ${pond.title}<span class="door-mark">›</span>`;
+    $('title').classList.toggle('door', !tut);
     $('mood').textContent = `★ ${totalStars(progress)}`;
     $('mood').style.display = tut ? 'none' : '';
     $('stones-caption').textContent = `stones · par ${pond.par}`;
@@ -467,11 +469,18 @@ async function start() {
       showSettings();
     };
     showOverlay(
-      settingsHtml(settings),
+      settingsHtml(settings, { fullScreen: !standalone, map: !isLesson(progress.reached) }),
       {
         sound: flip('sound'),
         vibration: flip('vibration'),
         timingHelp: flip('timingHelp'),
+        full: () => {
+          hideOverlay();
+          toggleFull();
+        },
+        howto: showHowTo,
+        map: openMap,
+        lessons: () => goTo({ ...progress, index: 0 }),
         done: hideOverlay,
         tune: () => {
           hideOverlay();
@@ -499,7 +508,6 @@ async function start() {
   const fsDoc = document as FsDoc;
   const fsRoot = document.documentElement as FsEl;
   const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
-  if (standalone) $('btn-full').style.display = 'none';
   const toggleFull = () => {
     audio.unlock();
     if (fsDoc.fullscreenElement || fsDoc.webkitFullscreenElement) {
@@ -517,17 +525,11 @@ async function start() {
       );
     }
   };
-  $('btn-full').addEventListener('click', toggleFull);
   const openMap = () => {
     audio.unlock();
     if (!isLesson(progress.reached)) showMap(false);
   };
-  $('btn-map').addEventListener('click', openMap);
   $('title').addEventListener('click', openMap);
-  $('btn-help').addEventListener('click', () => {
-    audio.unlock();
-    showHowTo();
-  });
 
   const devState = { index: progress.index, tier: progress.tier };
   let rebuildTimer = 0;
