@@ -29,7 +29,7 @@
     "meetPreview": true
   },
   "generator": {
-    "maxDifficulty": 10,
+    "maxDifficulty": 13,
     "lanternMinSpacing": 70,
     "rockRadiusMin": 28,
     "rockRadiusMax": 46
@@ -61,9 +61,9 @@
     "tiltDegPortrait": 22
   },
   "levels": {
-    "count": 12,
+    "count": 24,
     "baseStart": 1.2,
-    "baseStep": 0.65,
+    "baseStep": 0.5,
     "tierStep": 1.5,
     "startTier": 1,
     "twoStarsToEase": 2

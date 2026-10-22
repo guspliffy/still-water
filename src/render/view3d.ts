@@ -52,7 +52,9 @@ const COL = {
   warm: new Color(1.0, 0.72, 0.38),
   echo: new Color(0.35, 0.82, 1.0),
   gold: new Color(1.0, 0.68, 0.16),
+  moon: new Color(0.8, 0.82, 1.0),
 };
+const colorOf = (kind: LanternKind) => (kind === 'gold' ? COL.gold : kind === 'echo' ? COL.echo : kind === 'moon' ? COL.moon : COL.warm);
 
 interface Lantern3D {
   kind: LanternKind;
@@ -379,7 +381,7 @@ export class Pond3D implements PondRenderer {
         const l = this.lanterns[e.lantern];
         l.lit = true;
         l.litAt = this.clock;
-        const c = e.kind === 'gold' ? COL.gold : e.kind === 'echo' ? COL.echo : COL.warm;
+        const c = colorOf(e.kind);
         l.glow.material.color.copy(c);
         this.splash(l.pos.clone().setY(l.prop.lightY), c, e.kind === 'gold' ? 34 : 14, 0.8);
         if (e.kind === 'gold') this.marksExtra.push({ x: l.pos.x, z: l.pos.z, type: MARK.flare, born: this.clock, life: tuning.feel.goldFlareMs / 1000 });
@@ -450,7 +452,7 @@ export class Pond3D implements PondRenderer {
         l.glow.material.opacity = 0.6 * flicker * Math.min(1, age / 0.15);
         l.glow.scale.setScalar((isGold ? 1.1 : 0.85) * (1 + 0.6 * (1 - p)));
         if (nl < MAX_LIGHTS) {
-          const c = isGold ? COL.gold : l.kind === 'echo' ? COL.echo : COL.warm;
+          const c = colorOf(l.kind);
           u.uLight.value[nl].set(l.pos.x, l.prop.lightY, l.pos.z, flicker * Math.min(1, age / 0.15) * (isGold ? 1.3 : 1));
           u.uLightCol.value[nl].set(c.r, c.g, c.b);
           nl++;
@@ -489,7 +491,8 @@ export class Pond3D implements PondRenderer {
       u.uWinW.value = sim.p.speed * sim.p.goldWindow * S;
       if (ok) {
         sim.lanterns.forEach((l, i) => {
-          if (l.lit || l.def.kind === 'gold') return;
+          // Gold has its own preview, and a stone ring never wakes a moon lantern.
+          if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
           if (dist(pp, l.def) <= sim.p.maxRadius && !isOccluded(pp, l.def, sim.pond.rocks)) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
         });
         for (const g of this.goldPreview) {
@@ -737,14 +740,15 @@ export class Pond3D implements PondRenderer {
     const scale = 1.35;
     group.scale.setScalar(scale);
     prop.lightY *= scale;
-    const base = kind === 'gold' ? COL.gold : kind === 'echo' ? COL.echo : COL.warm;
+    const base = colorOf(kind);
     const glow = new Sprite(new SpriteMaterial({ map: this.glowTex, color: base.clone(), blending: AdditiveBlending, transparent: true, depthWrite: false, depthTest: false, opacity: 0 }));
     glow.scale.setScalar(1.2);
     glow.position.y = prop.lightY / scale;
     glow.renderOrder = 10;
     group.add(glow);
     group.position.copy(pos);
-    group.rotation.y = i * 0.9;
+    // The crescent faces the camera; the round lanterns turn freely.
+    group.rotation.y = kind === 'moon' ? 0 : i * 0.9;
     this.pondGroup.add(group);
     return { kind, group, prop, glow, lit: false, litAt: -1, touchedAt: -1, missAt: -1, phase: i * 1.7, pos };
   }

@@ -124,6 +124,8 @@ export class Sim {
     this.lanterns.forEach((l, i) => {
       if (i === rip.lantern) return;
       if (l.lit) return;
+      // Moon lanterns sleep through stone rings; only an echo's ring wakes them.
+      if (l.def.kind === 'moon' && rip.source !== 'echo') return;
       const d = dist(rip, l.def);
       // Half-open interval so a crossing on a step boundary counts exactly once.
       if (d > rA && d <= rB && !isOccluded(rip, l.def, this.pond.rocks)) {

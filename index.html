@@ -86,7 +86,10 @@
       .card.map { width: min(360px, 100%); padding: 22px 20px 20px; }
       .card.map h2 { font-size: 26px; }
       .card.map p { margin-bottom: 8px; }
-      .map-wrap { position: relative; height: min(52vh, 440px); aspect-ratio: 300 / 500; margin: 6px auto 14px; }
+      .map-scroll { height: min(52vh, 440px); overflow-y: auto; overflow-x: hidden; margin: 6px -8px 14px; padding: 20px 8px; scrollbar-width: none; touch-action: pan-y;
+        mask-image: linear-gradient(transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+      .map-scroll::-webkit-scrollbar { display: none; }
+      .map-wrap { position: relative; width: calc(min(52vh, 440px) * 0.6); margin: 0 auto; }
       .map-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
       .trail { fill: none; stroke: #2a3550; stroke-width: 3; stroke-dasharray: 2 7; stroke-linecap: round; }
       .trail.lit { stroke: #e8c37a; stroke-dasharray: none; opacity: 0.75; }
@@ -99,6 +102,12 @@
       .stop i { position: absolute; top: 37px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
       .stop i b { color: #3a4560; font-weight: 400; }
       .stop i b.on { color: var(--gold); }
+      .settings { display: flex; flex-direction: column; gap: 14px; margin: 16px 0 20px; text-align: left; }
+      .set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 16px; }
+      .set-row small { display: block; color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+      .card button.toggle { min-width: 64px; padding: 8px 14px; font-weight: 600; color: var(--dim); }
+      .card button.toggle.on { background: #e8dcc0; color: #0a1220; border-color: #e8dcc0; }
+      .card button.quiet { border: none; color: var(--dim); font-size: 12.5px; margin-top: 10px; padding: 6px; }
       .tp-dfwv { z-index: 20 !important; max-height: 80vh; overflow: auto; }
     </style>
   </head>
@@ -110,8 +119,7 @@
         <button class="icon" id="btn-map" title="Map" aria-label="Map"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 3.5l4-1.5 5 1.5 4-1.5v10.5l-4 1.5-5-1.5-4 1.5z"/><path d="M5.5 2v10.5M10.5 3.5V14"/></svg></button>
         <button class="icon" id="btn-help" title="How to play" aria-label="How to play">?</button>
         <button class="icon" id="btn-full" title="Full screen (F)" aria-label="Full screen"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 5.5v-4h4M10.5 1.5h4v4M14.5 10.5v4h-4M5.5 14.5h-4v-4"/></svg></button>
-        <button class="icon" id="btn-sound" title="Sound (M)" aria-label="Toggle sound">♪</button>
-        <button class="icon" id="btn-tune" title="Tuning panel (T)" aria-label="Tuning panel">⚙</button>
+        <button class="icon" id="btn-settings" title="Settings" aria-label="Settings">⚙</button>
       </div>
     </div>
     <div id="coach"><span id="coach-text"></span></div>

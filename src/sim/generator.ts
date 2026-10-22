@@ -15,20 +15,24 @@ export interface GenParams {
 export interface Features {
   echo: boolean;
   rocks: boolean;
+  moon: boolean;
 }
 
-const ALL: Features = { echo: true, rocks: true };
+const ALL: Features = { echo: true, rocks: true, moon: true };
 
 /** What a difficulty level asks of the generator. Rules never change, only the pond. */
 export function recipe(difficulty: number, features: Features = ALL) {
   const d = Math.max(1, Math.round(difficulty));
-  const echo = features.echo && d >= 3 ? 1 + Math.floor((d - 3) / 4) : 0;
+  // Moon lanterns hang off echo lanterns (only an echo's ring can wake them), so they need one each.
+  const moon = features.moon && features.echo && d >= 5 ? (d >= 11 ? 2 : 1) : 0;
+  const echo = Math.max(moon, features.echo && d >= 3 ? 1 + Math.floor((d - 3) / 4) : 0);
   return {
-    stones: Math.min(4, 2 + Math.floor((d - 1) / 3)),
-    gold: d >= 6 ? 2 : 1,
+    stones: Math.min(5, 2 + Math.floor((d - 1) / 3)),
+    gold: d >= 11 ? 3 : d >= 6 ? 2 : 1,
     echo,
-    rocks: features.rocks && d >= 4 ? 1 + Math.floor((d - 4) / 4) : 0,
-    plain: Math.min(6, 1 + Math.floor(d / 2)),
+    moon,
+    rocks: features.rocks && d >= 4 ? Math.min(4, 1 + Math.floor((d - 4) / 3)) : 0,
+    plain: Math.min(8, 1 + Math.floor(d / 2)),
     // Largest gap between the solution's drops: 0 means the golds sit on the midline between stones.
     maxDelay: d <= 2 ? 0.1 : Math.min(0.9, 0.1 + 0.1 * (d - 2)),
   };
@@ -110,7 +114,7 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
     if (!placed) return null;
   }
 
-  // 3. Echo lanterns, each with a lantern only its echo can reach.
+  // 3. Echo lanterns, each with a lantern only its echo can reach (a moon lantern for the first few).
   for (let e = 0; e < rc.echo; e++) {
     let placed = false;
     for (let tries = 0; tries < 400 && !placed; tries++) {
@@ -119,8 +123,10 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
       if (!clear(ep, 60)) continue;
       const tail = around(ep, sp.echoMaxRadius * 0.55, sp.echoMaxRadius * 0.85);
       if (!clear(tail, 60) || dist(tail, ep) < gp.lanternMinSpacing) continue;
-      if (stones.some((st) => dist(st, tail) < R * 1.02)) continue;
-      lanterns.push({ ...ep, kind: 'echo' }, { ...tail, kind: 'plain' });
+      const moon = e < rc.moon;
+      // A plain tail must be out of every stone's reach; a moon tail ignores stone rings anyway.
+      if (!moon && stones.some((st) => dist(st, tail) < R * 1.02)) continue;
+      lanterns.push({ ...ep, kind: 'echo' }, { ...tail, kind: moon ? 'moon' : 'plain' });
       placed = true;
     }
     if (!placed) return null;

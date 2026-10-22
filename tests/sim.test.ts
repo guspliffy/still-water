@@ -96,6 +96,16 @@ describe('sim', () => {
     expect(ev.at(-1)?.type).toBe('complete');
   });
 
+  it('moon lanterns ignore stone rings and wake to an echo', () => {
+    const moon = { x: 300, y: 400, kind: 'moon' as const };
+    const alone = new Sim(pond({ stones: 1, lanterns: [moon] }), sp);
+    alone.dropStone({ x: 300, y: 500 });
+    expect(runFor(alone, 4).some((e) => e.type === 'stilled')).toBe(true);
+    const withEcho = new Sim(pond({ stones: 1, lanterns: [moon, { x: 300, y: 540, kind: 'echo' }] }), sp);
+    withEcho.dropStone({ x: 300, y: 600 });
+    expect(runFor(withEcho, 6).at(-1)?.type).toBe('complete');
+  });
+
   it('runs out of stones into a calm stilled state', () => {
     const sim = new Sim(pond({ stones: 1, lanterns: [{ x: 300, y: 100, kind: 'plain' }] }), sp);
     sim.dropStone({ x: 300, y: 800 });
@@ -130,11 +140,12 @@ describe('ponds', () => {
   });
 
   it('keeps echo and rocks out of levels before their intro', () => {
-    for (let level = 0; level < 12; level++) {
+    for (let level = 0; level < 24; level++) {
       for (const d of [1, 4, 8]) {
         const p = pondAt(TUTORIAL.length + level, d, sp, gp);
         if (level < 3) expect(p.lanterns.some((l) => l.kind === 'echo')).toBe(false);
         if (level < 6) expect(p.rocks.length).toBe(0);
+        if (level < 9) expect(p.lanterns.some((l) => l.kind === 'moon')).toBe(false);
       }
     }
   });

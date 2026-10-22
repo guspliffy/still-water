@@ -9,6 +9,7 @@ import type { PondDef, StoneDrop, Vec } from './sim/types';
 import { genParams, levelParams, simParams, tuning } from './tuning';
 import { Coach, ICONS, POND_CARDS } from './ui/coach';
 import { createDevPanel } from './ui/devpanel';
+import { applySettings, loadSettings, saveSettings, settingsHtml, type Settings } from './ui/settings';
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -168,6 +169,7 @@ async function start() {
          ${met(3) ? `${ICONS.echo}<div>Echo lantern<small>Lights, then sends out a smaller ripple of its own.</small></div>` : ''}
          ${met(0) ? `${ICONS.gold}<div>Gold lantern<small>Needs two ripples touching it within ${tuning.gold.window} s. The gold arc shows the time left.</small></div>` : ''}
          ${met(6) ? `${ICONS.rock}<div>Rock<small>Blocks ripples.</small></div>` : ''}
+         ${met(9) ? `${ICONS.moon}<div>Moon lantern<small>Only an echo lantern’s ripple can light it.</small></div>` : ''}
        </div>
        <p>${aim} Use par or fewer stones for three stars.</p>
        <div class="row"><button class="primary" data-act="ok">Got it</button></div>`,
@@ -232,7 +234,11 @@ async function start() {
     };
     const actions: Record<string, () => void> = { continue: () => play(progress.reached) };
     for (const i of playable) actions[`go${i}`] = () => play(i);
-    showOverlay(intro ? html.replace('<h2>The path</h2>', '<h2>The path ahead</h2><p class="lead">Twelve ponds, each a little deeper.</p>') : html, actions, actions.continue, 'center map');
+    showOverlay(intro ? html.replace('<h2>The path</h2>', `<h2>The path ahead</h2><p class="lead">${tuning.levels.count} ponds, each a little deeper.</p>`) : html, actions, actions.continue, 'center map');
+    // The map is taller than the card: start it scrolled to where the player is.
+    const scroller = overlay.querySelector<HTMLElement>('.map-scroll');
+    const here = overlay.querySelector<HTMLElement>('.stop.current');
+    if (scroller && here) scroller.scrollTop = here.offsetTop + 20 - scroller.clientHeight / 2;
   }
 
   function onComplete(stonesUsed: number) {
@@ -439,16 +445,49 @@ async function start() {
   }
 
   // ---------- buttons and keys ----------
+  let settings: Settings = loadSettings();
+  const setSettings = (s: Settings) => {
+    settings = s;
+    saveSettings(s);
+    applySettings(s);
+    audio.setMuted(!s.sound);
+  };
+  setSettings(settings);
   const toggleSound = () => {
     audio.unlock();
-    audio.setMuted(!audio.muted);
-    $('btn-sound').style.opacity = audio.muted ? '0.4' : '1';
+    setSettings({ ...settings, sound: !settings.sound });
   };
+  function showSettings() {
+    const flip = (key: keyof Settings) => () => {
+      setSettings({ ...settings, [key]: !settings[key] });
+      showSettings();
+    };
+    showOverlay(
+      settingsHtml(settings),
+      {
+        sound: flip('sound'),
+        vibration: flip('vibration'),
+        timingHelp: flip('timingHelp'),
+        done: hideOverlay,
+        tune: () => {
+          hideOverlay();
+          devState.index = progress.index;
+          devState.tier = progress.tier;
+          panel.toggle();
+        },
+      },
+      hideOverlay,
+      'center',
+    );
+  }
   $('btn-restart').addEventListener('click', () => {
     audio.unlock();
     load(false);
   });
-  $('btn-sound').addEventListener('click', toggleSound);
+  $('btn-settings').addEventListener('click', () => {
+    audio.unlock();
+    showSettings();
+  });
 
   // Full screen: the standard API, the older WebKit one, or (iPhone Safari) a tip to add it to the home screen.
   type FsDoc = Document & { webkitFullscreenElement?: Element; webkitExitFullscreen?: () => void };
@@ -501,11 +540,6 @@ async function start() {
       hintCount = pond.solution.length;
       load(false);
     },
-  });
-  $('btn-tune').addEventListener('click', () => {
-    devState.index = progress.index;
-    devState.tier = progress.tier;
-    panel.toggle();
   });
   if (new URLSearchParams(location.search).has('dev')) panel.toggle();
 

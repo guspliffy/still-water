@@ -4,6 +4,8 @@ import {
   TubeGeometry,
   CanvasTexture,
   DoubleSide,
+  ExtrudeGeometry,
+  Shape,
   RepeatWrapping,
   SRGBColorSpace,
   BufferAttribute,
@@ -209,6 +211,7 @@ function woodSkin(): CanvasTexture {
 export function makeLantern(kind: LanternKind): LanternProp {
   if (kind === 'echo') return pavilionLantern();
   if (kind === 'gold') return lotusLantern();
+  if (kind === 'moon') return moonLantern();
   return paperLantern();
 }
 
@@ -330,6 +333,62 @@ function pavilionLantern(): LanternProp {
   }
   root.add(body);
   return { root, body, glowMats: [paper], spinner: null, lightY: 0.15 };
+}
+
+/** Crescent outline: the outer circle minus an offset inner circle, as one closed path. */
+function crescentShape(r1: number, cx: number, cy: number, r2: number): Shape {
+  const d = Math.hypot(cx, cy);
+  const phi = Math.atan2(cy, cx);
+  const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+  const alpha = Math.acos(a / r1);
+  const s = new Shape();
+  const n = 40;
+  // Outer arc, the long way round, away from the inner circle.
+  for (let i = 0; i <= n; i++) {
+    const t = phi + alpha + ((2 * Math.PI - 2 * alpha) * i) / n;
+    const x = Math.cos(t) * r1;
+    const y = Math.sin(t) * r1;
+    if (i === 0) s.moveTo(x, y);
+    else s.lineTo(x, y);
+  }
+  // Inner arc back to the start, through the side facing the outer centre.
+  const g0 = Math.atan2(Math.sin(phi - alpha) * r1 - cy, Math.cos(phi - alpha) * r1 - cx);
+  let g1 = Math.atan2(Math.sin(phi + alpha) * r1 - cy, Math.cos(phi + alpha) * r1 - cx);
+  const mid = (g: number) => Math.hypot(cx + Math.cos(g) * r2, cy + Math.sin(g) * r2) < r1;
+  if (g1 > g0 && !mid((g0 + g1) / 2)) g1 -= 2 * Math.PI;
+  else if (g1 < g0 && !mid((g0 + g1) / 2)) g1 += 2 * Math.PI;
+  for (let i = 1; i <= n; i++) {
+    const t = g0 + ((g1 - g0) * i) / n;
+    s.lineTo(cx + Math.cos(t) * r2, cy + Math.sin(t) * r2);
+  }
+  return s;
+}
+
+/** Pale crescent moon on a stone post, with a blue bead on its tip: it answers to echo light. */
+function moonLantern(): LanternProp {
+  const root = new Group();
+  const base = outlined(new Mesh(new CylinderGeometry(0.12, 0.14, 0.05, 14), toon(0x7d8499)));
+  base.position.y = 0.02;
+  root.add(base);
+  const post = outlined(new Mesh(new CylinderGeometry(0.018, 0.024, 0.16, 8), toon(0x6c7287)), 0.004);
+  post.position.y = 0.12;
+  root.add(post);
+
+  const body = new Group();
+  body.position.y = 0.34;
+  const geo = new ExtrudeGeometry(crescentShape(0.17, 0.075, 0.055, 0.14), { depth: 0.035, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3, curveSegments: 24 });
+  geo.center();
+  // Muted lilac while asleep, so waking up to bright moonlight is a clear change.
+  const moonMat = toon(0xb4b6d4, { emissive: new Color(0.85, 0.86, 1.0), emissiveIntensity: 0.05 });
+  const crescent = outlined(new Mesh(geo, moonMat), 0.008);
+  // Opening up and to the right, tipped back a little so it reads from the tilted camera.
+  crescent.rotation.set(-0.3, 0, -0.45);
+  body.add(crescent);
+  const bead = new Mesh(new SphereGeometry(0.016, 10, 8), toon(0x7fe0ff, { emissive: new Color(0.35, 0.82, 1.0), emissiveIntensity: 0.6 }));
+  bead.position.set(0.13, 0.13, 0.02);
+  body.add(bead);
+  root.add(body);
+  return { root, body, glowMats: [moonMat], spinner: null, lightY: 0.34 };
 }
 
 /** Petal with a cream base fading to pink at the tip (vertex colours). */

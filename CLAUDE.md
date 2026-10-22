@@ -17,7 +17,7 @@ TypeScript, Vite, Three.js (3D view, default), PixiJS 8 (2D view via `?2d`), Vit
 - `src/render/view.ts`: 2D Pixi view (`?2d`). Views read the sim, never mutate it. `arcs.ts`: rock-shadow arc helper.
 - `src/audio/audio.ts`: synthesized sounds and haptics.
 - `src/ui/devpanel.ts`: Tweakpane panel bound generically to tuning.json, with export.
-- `src/progress.ts`: stars, adaptive difficulty, saved progress.
+- `src/progress.ts`: stars, adaptive difficulty, saved progress. `src/ui/settings.ts`: the player's few settings. `src/ui/map.ts`: level map.
 - `src/main.ts`: app wiring, input, overlays, fixed-step loop.
 - `tests/`: Vitest specs for sim, generator, progress.
 

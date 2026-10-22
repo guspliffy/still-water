@@ -3,8 +3,11 @@ export interface Vec {
   y: number;
 }
 
-/** plain lights on any ring; echo lights and sends its own small ring; gold needs two rings inside the window. */
-export type LanternKind = 'plain' | 'echo' | 'gold';
+/**
+ * plain lights on any ring; echo lights and sends its own small ring; gold needs two rings inside
+ * the window; moon lights only from an echo's ring.
+ */
+export type LanternKind = 'plain' | 'echo' | 'gold' | 'moon';
 
 export interface LanternDef extends Vec {
   kind: LanternKind;

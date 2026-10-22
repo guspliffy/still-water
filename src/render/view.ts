@@ -346,7 +346,7 @@ export class PondView implements PondRenderer {
         const isGold = v.kind === 'gold';
         const base = isGold ? 1 : 0.8;
         v.glow.alpha = base * flicker * Math.min(1, age / 0.12);
-        v.glow.tint = isGold ? COLORS.gold : v.kind === 'echo' ? COLORS.echoLit : COLORS.warm;
+        v.glow.tint = isGold ? COLORS.gold : v.kind === 'echo' ? COLORS.echoLit : v.kind === 'moon' ? 0xdcdcff : COLORS.warm;
         v.glow.width = v.glow.height = (isGold ? 150 : 110) * (1 + 0.6 * (1 - p));
         v.reflection.alpha = 0.22 * flicker * Math.min(1, age / 0.3);
         v.reflection.tint = v.glow.tint;
@@ -410,7 +410,7 @@ export class PondView implements PondRenderer {
     g.circle(p.x, p.y, 7).stroke({ width: 2, color: 0xffffff, alpha: ok ? 0.6 : 0.2 });
     if (!ok) return;
     this.sim.lanterns.forEach((l) => {
-      if (l.lit || l.def.kind === 'gold') return;
+      if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
       if (dist(p, l.def) <= R && !isOccluded(p, l.def, this.sim.pond.rocks)) {
         g.circle(l.def.x, l.def.y, LANTERN_R + 7).stroke({ width: 1.5, color: COLORS.warm, alpha: 0.45 });
       }
@@ -504,6 +504,14 @@ export class PondView implements PondRenderer {
         g.poly(hex(r + 3)).fill({ color: COLORS.unlitFill }).stroke({ width: 2, color: COLORS.echoDim });
         g.poly(hex((r + 3) * 0.4)).fill({ color: COLORS.echoLit, alpha: 0.3 });
       }
+      return;
+    }
+    if (v.kind === 'moon') {
+      // Pale crescent: a shape of its own, lit only by echo rings.
+      g.circle(0, 0, r + 2).fill({ color: v.lit ? 0xdcdcff : COLORS.unlitFill });
+      if (!v.lit) g.stroke({ width: 2, color: 0x8c90b8 });
+      g.circle(r * 0.5, -r * 0.35, r * 0.85).cut();
+      g.circle(r * 0.75, -r * 0.75, 2.5).fill({ color: COLORS.echoLit, alpha: v.lit ? 1 : 0.6 });
       return;
     }
     if (v.lit) {
