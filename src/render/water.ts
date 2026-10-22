@@ -17,6 +17,7 @@ export const MARK = {
   flare: 8, // param: 0..1 progress
   splash: 9, // param: 0..1 progress
   reachOk: 10, // lantern this stone would reach
+  missed: 11, // unlit lantern after the water settles; param: pulse 0..1
 } as const;
 
 const vertex = /* glsl */ `
@@ -49,6 +50,8 @@ uniform vec3 uLightCol[MAX_LIGHT];
 uniform int uMarkCount;
 uniform vec4 uMark[MAX_MARK];     // x, z, type, param
 uniform vec4 uPreview;            // x, z, R, alpha
+uniform float uMeet;              // 1 while aiming: show where the new ring meets moving rings
+uniform float uWinW;              // gold window as a distance (speed * window)
 uniform vec3 uMoonDir;
 uniform float uLine;
 uniform float uGlow;
@@ -185,6 +188,8 @@ void main() {
       col += vec3(1.0, 0.95, 0.85) * ring(d, 0.03 + q * 0.12, 0.02) * (1.0 - q) * 2.0;
     } else if (t == 10) {
       col += vec3(1.0, 0.8, 0.5) * ring(d, 0.24, 0.012) * 0.6;
+    } else if (t == 11) {
+      col += vec3(1.0, 0.62, 0.55) * (ring(d, 0.26 + q * 0.05, 0.012) * (0.35 + 0.35 * q));
     }
   }
 
@@ -198,6 +203,23 @@ void main() {
     float dash = aaStep(0.5, f, e) * (1.0 - aaStep(1.0 - e, f, e));
     col += vec3(0.8, 0.86, 0.95) * ring(d, uPreview.z, 0.014) * dash * 0.55 * uPreview.w;
     col += vec3(1.0) * ring(d, 0.07, 0.01) * 0.8 * uPreview.w;
+
+    // Meeting band: where the ring you'd drop now meets each ring already moving. Inside the
+    // soft band both arrive within the gold window; the bright line is "exactly together".
+    if (uMeet > 0.5 && d < uPreview.z && !shadowed(uPreview.xy, p)) {
+      for (int i = 0; i < MAX_RIP; i++) {
+        if (i >= uRipCount) break;
+        vec4 a = uRip[i];
+        float maxR = uRipB[i].x;
+        float di = length(p - a.xy);
+        if (a.z >= maxR || di < a.z || di > maxR) continue;
+        if (shadowed(a.xy, p)) continue;
+        float f = d - di + a.z;
+        float band = 1.0 - smoothstep(uWinW * 0.75, uWinW, abs(f));
+        float fade = 1.0 - smoothstep(maxR * 0.8, maxR, di);
+        col += vec3(1.0, 0.76, 0.3) * (band * 0.06 + ring(f, 0.0, uLine * 0.7) * 0.4) * fade;
+      }
+    }
   }
 
   // Darken toward the stone rim, with a faint wet edge line.
@@ -227,6 +249,8 @@ export function createWaterMaterial(): ShaderMaterial {
       uMarkCount: { value: 0 },
       uMark: { value: Array.from({ length: MAX_MARKS }, () => new Vector4()) },
       uPreview: { value: new Vector4() },
+      uMeet: { value: 0 },
+      uWinW: { value: 0.5 },
       uMoonDir: { value: new Vector3(-0.12, 0.5, -0.86).normalize() },
       uLine: { value: 0.022 },
       uGlow: { value: 0.1 },

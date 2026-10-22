@@ -25,7 +25,8 @@
   "assist": {
     "reachPreview": true,
     "goldMatchPreview": true,
-    "touchHoldPreviewMs": 120
+    "touchHoldPreviewMs": 120,
+    "meetPreview": true
   },
   "generator": {
     "maxDifficulty": 10,

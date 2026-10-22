@@ -484,6 +484,8 @@ export class Pond3D implements PondRenderer {
       const ok = sim.canDropAt(pp) && sim.stonesLeft > 0;
       const sp = this.toScene(pp);
       u.uPreview.value.set(sp.x, sp.z, sim.p.maxRadius * S, ok ? 1 : 0.35);
+      u.uMeet.value = ok && tuning.assist.meetPreview ? 1 : 0;
+      u.uWinW.value = sim.p.speed * sim.p.goldWindow * S;
       if (ok) {
         sim.lanterns.forEach((l, i) => {
           if (l.lit || l.def.kind === 'gold') return;
@@ -495,7 +497,16 @@ export class Pond3D implements PondRenderer {
           else marks.push([l.pos.x, l.pos.z, MARK.goldNear, 1]);
         }
       }
-    } else u.uPreview.value.w = 0;
+    } else {
+      u.uPreview.value.w = 0;
+      u.uMeet.value = 0;
+    }
+    // After the water settles, unlit lanterns pulse softly so it's clear what was missed.
+    if (sim.done === 'stilled') {
+      sim.lanterns.forEach((l, i) => {
+        if (!l.lit) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.missed, 0.5 + 0.5 * Math.sin(this.clock * 3)]);
+      });
+    }
 
     for (const t of this.targets) {
       const sp = this.toScene(t);

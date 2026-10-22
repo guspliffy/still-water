@@ -1,6 +1,6 @@
 # State
 
-**Milestone:** comparison prototype (M1 greybox plus M2 feel slice), built side by side with Bloom so Jonny can pick a direction.
+**Milestone:** working toward alpha (phase 1 of 4). Bloom goes to alpha in parallel in its own repo.
 
 **Playable:** welcome card, 5 coached lessons (`?fresh` replays them), a map of 12 levels with three hidden versions each chosen by stars (GDD §3.6), then endless open water. Touch and mouse. Synth audio. Tuning panel.
 
@@ -8,11 +8,14 @@
 
 **HUD:** full screen button (iPhone shows the Add to Home Screen tip), labelled Retry pill beside the stones that pulses once stones run out.
 
-**Next:** Jonny plays Bloom and Still Water on phone and desktop, then we decide together which to take forward.
+**Alpha:** Jonny (2026-10-22) is taking both Still Water and Bloom to alpha. Plan: Claude Doc "Still Water: road to alpha" https://claude.ai/artifact/Cc4xjJrwVcqCbszjsxtsTA, with four phases: Understand, Satisfy, Depth, Alpha ready.
+Phase 1 progress: done = meeting band (aim to see where your ring meets moving rings, gold-window wide; `assist.meetPreview`), unlit lanterns pulse after the water settles. Next = "Watch" half-speed replay on the stilled card; lessons teach basics only (t1, t2), with t3/t4/t5 played as intro ponds at levels 1/4/7 and generator features gated by level; hint reveals one lily pad at a time, skip after 3 fails; par line at level start.
 
 ## Open owner questions
-1. Which concept goes forward? (Default per M0 doc: Bloom, unless Still Water feels better in hand.)
-2. Keep the gold match preview as a permanent assist, an option, or tutorial-only? Default: option, on.
+1. New ideas for alpha: mirror walls, moon lanterns (echo light only), drifting lanterns? (Asked 2026-10-22, unanswered.)
+2. OK to collect anonymous play data in the alpha test? (Asked 2026-10-22, unanswered.)
+3. Who are the 5 to 10 outside testers; private or public link? (Asked 2026-10-22, unanswered.)
+4. Keep the gold match preview as a permanent assist, an option, or tutorial-only? Default: option, on.
 
 ## Decisions
 - Three.js for the 3D view, sim untouched: the renderer interface let 2D and 3D share all game logic.
