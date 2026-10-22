@@ -1,6 +1,6 @@
-import { dist, insidePond, rng } from './geometry';
+import { dist, distToSegment, insidePond, pathLength, rng, sideOf } from './geometry';
 import { runSolution } from './sim';
-import type { LanternDef, PondDef, RockDef, SimParams, StoneDrop, Vec } from './types';
+import type { LanternDef, PondDef, RockDef, SimParams, StoneDrop, Vec, WallDef } from './types';
 
 export interface GenParams {
   edgeMargin: number;
@@ -16,9 +16,10 @@ export interface Features {
   echo: boolean;
   rocks: boolean;
   moon: boolean;
+  walls: boolean;
 }
 
-const ALL: Features = { echo: true, rocks: true, moon: true };
+const ALL: Features = { echo: true, rocks: true, moon: true, walls: true };
 
 /** What a difficulty level asks of the generator. Rules never change, only the pond. */
 export function recipe(difficulty: number, features: Features = ALL) {
@@ -32,6 +33,8 @@ export function recipe(difficulty: number, features: Features = ALL) {
     echo,
     moon,
     rocks: features.rocks && d >= 4 ? Math.min(4, 1 + Math.floor((d - 4) / 3)) : 0,
+    // Each wall brings a bank-shot lantern hidden behind its own rock.
+    walls: features.walls && d >= 5 ? (d >= 11 ? 2 : 1) : 0,
     plain: Math.min(8, 1 + Math.floor(d / 2)),
     // Largest gap between the solution's drops: 0 means the golds sit on the midline between stones.
     maxDelay: d <= 2 ? 0.1 : Math.min(0.9, 0.1 + 0.1 * (d - 2)),
@@ -87,13 +90,64 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
   });
 
   const lanterns: LanternDef[] = [];
+  const rocks: RockDef[] = [];
+  const walls: WallDef[] = [];
+  const base: PondDef = {
+    id: `gen-${seed}`,
+    title: '',
+    lanterns,
+    rocks,
+    walls,
+    par: stones.length,
+    stones: stones.length + gp.spareStones,
+    hints: [],
+    solution: stones,
+    difficulty,
+  };
   const clear = (p: Vec, m: number) =>
     inside(p, gp.edgeMargin) &&
     lanterns.every((l) => dist(l, p) >= gp.lanternMinSpacing) &&
     stones.every((s) => dist(s, p) >= m);
   const arrival = (s: StoneDrop, p: Vec) => s.t + dist(s, p) / sp.speed;
+  // Later lanterns must be in plain sight of the stone that lights them.
+  const sees = (from: Vec, to: Vec) => pathLength(from, to, -1, rocks, walls) !== null;
+  // 2. Mirror walls first, while the pond is empty. Each brings a bank shot: a lantern a solution
+  // stone reaches only by the bounce, because a rock hides it from the straight ring.
+  const wallPt = (w: WallDef, end: 0 | 1): Vec => (end === 0 ? { x: w.ax, y: w.ay } : { x: w.bx, y: w.by });
+  const nearWall = (p: Vec, w: WallDef) => distToSegment(p, wallPt(w, 0), wallPt(w, 1));
+  for (let k = 0; k < rc.walls; k++) {
+    for (let tries = 0; tries < 120; tries++) {
+      const s = stones[Math.floor(rand() * stones.length)];
+      const c = around(s, 80, 140);
+      const ang = Math.atan2(c.y - s.y, c.x - s.x) + Math.PI / 2 + (rand() - 0.5) * 0.6;
+      const half = 70 + rand() * 30;
+      const w: WallDef = { ax: c.x + Math.cos(ang) * half, ay: c.y + Math.sin(ang) * half, bx: c.x - Math.cos(ang) * half, by: c.y - Math.sin(ang) * half };
+      if (!inside(wallPt(w, 0), gp.edgeMargin) || !inside(wallPt(w, 1), gp.edgeMargin)) continue;
+      if (lanterns.some((l) => nearWall(l, w) < 45) || stones.some((st) => nearWall(st, w) < 50)) continue;
+      if (walls.some((o) => nearWall(wallPt(o, 0), w) < 60 || nearWall(wallPt(o, 1), w) < 60 || nearWall(wallPt(w, 0), o) < 60)) continue;
+      const bank = around(c, 60, 150);
+      if (sideOf(bank, w) !== sideOf(s, w) || !clear(bank, 60) || nearWall(bank, w) < 45) continue;
+      const m = walls.length;
+      const trial = [...walls, w];
+      const bounce = pathLength(s, bank, m, rocks, trial);
+      if (bounce === null || bounce > R * 0.85) continue;
+      const r = 22 + rand() * 8;
+      const f = 0.4 + rand() * 0.2;
+      const rock = { x: s.x + (bank.x - s.x) * f, y: s.y + (bank.y - s.y) * f, r };
+      if (lanterns.some((l) => dist(l, rock) < r + 45) || stones.some((st) => dist(st, rock) < r + 40)) continue;
+      if (trial.some((o) => nearWall(rock, o) < r + 20) || rocks.some((o) => dist(o, rock) < o.r + r + 40)) continue;
+      walls.push(w);
+      rocks.push(rock);
+      lanterns.push({ ...bank, kind: 'plain' });
+      const straightHidden = pathLength(s, bank, -1, rocks, walls) === null;
+      if (straightHidden && pathLength(s, bank, m, rocks, walls) !== null && runSolution(base, sp, stones).done === 'complete') break;
+      walls.pop();
+      rocks.pop();
+      lanterns.pop();
+    }
+  }
 
-  // 2. Gold lanterns where two solution rings arrive well inside the window.
+  // 3. Gold lanterns where two solution rings arrive well inside the window.
   for (let g = 0; g < rc.gold; g++) {
     let placed = false;
     for (let tries = 0; tries < 400 && !placed; tries++) {
@@ -107,22 +161,22 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
       const p = around(mid, 0, R * 0.6);
       if (dist(a, p) > R * 0.9 || dist(b, p) > R * 0.9) continue;
       if (Math.abs(arrival(a, p) - arrival(b, p)) > sp.goldWindow * 0.3) continue;
-      if (!clear(p, 70)) continue;
+      if (!clear(p, 70) || !sees(a, p) || !sees(b, p)) continue;
       lanterns.push({ ...p, kind: 'gold' });
       placed = true;
     }
     if (!placed) return null;
   }
 
-  // 3. Echo lanterns, each with a lantern only its echo can reach (a moon lantern for the first few).
+  // 4. Echo lanterns, each with a lantern only its echo can reach (a moon lantern for the first few).
   for (let e = 0; e < rc.echo; e++) {
     let placed = false;
     for (let tries = 0; tries < 400 && !placed; tries++) {
       const s = stones[Math.floor(rand() * stones.length)];
       const ep = around(s, 90, R * 0.85);
-      if (!clear(ep, 60)) continue;
+      if (!clear(ep, 60) || !sees(s, ep)) continue;
       const tail = around(ep, sp.echoMaxRadius * 0.55, sp.echoMaxRadius * 0.85);
-      if (!clear(tail, 60) || dist(tail, ep) < gp.lanternMinSpacing) continue;
+      if (!clear(tail, 60) || dist(tail, ep) < gp.lanternMinSpacing || !sees(ep, tail)) continue;
       const moon = e < rc.moon;
       // A plain tail must be out of every stone's reach; a moon tail ignores stone rings anyway.
       if (!moon && stones.some((st) => dist(st, tail) < R * 1.02)) continue;
@@ -132,31 +186,19 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
     if (!placed) return null;
   }
 
-  // 4. Plain lanterns somewhere a solution ring passes.
+  // 5. Plain lanterns somewhere a solution ring passes.
   for (let n = 0; n < rc.plain; n++) {
     let placed = false;
     for (let tries = 0; tries < 300 && !placed; tries++) {
       const s = stones[Math.floor(rand() * stones.length)];
       const p = around(s, 70, R * 0.9);
-      if (!clear(p, 60)) continue;
+      if (!clear(p, 60) || !sees(s, p)) continue;
       lanterns.push({ ...p, kind: 'plain' });
       placed = true;
     }
   }
 
-  // 5. Rocks that leave the solution intact but block lazy alternatives.
-  const rocks: RockDef[] = [];
-  const base: PondDef = {
-    id: `gen-${seed}`,
-    title: '',
-    lanterns,
-    rocks,
-    par: stones.length,
-    stones: stones.length + gp.spareStones,
-    hints: [],
-    solution: stones,
-    difficulty,
-  };
+  // 6. Rocks that leave the solution intact but block lazy alternatives.
   for (let k = 0; k < rc.rocks; k++) {
     for (let tries = 0; tries < 60; tries++) {
       const r = gp.rockRadiusMin + rand() * (gp.rockRadiusMax - gp.rockRadiusMin);
@@ -165,6 +207,7 @@ function tryGenerate(seed: number, difficulty: number, sp: SimParams, gp: GenPar
       if (lanterns.some((l) => dist(l, p) < r + 45)) continue;
       if (stones.some((s) => dist(s, p) < r + 40)) continue;
       if (rocks.some((o) => dist(o, p) < o.r + r + 40)) continue;
+      if (walls.some((w) => nearWall(p, w) < r + 20)) continue;
       // Only keep rocks near lanterns, where their shadows change the plan.
       if (!lanterns.some((l) => dist(l, p) < 170)) continue;
       rocks.push(rock);

@@ -9,7 +9,7 @@
 **HUD:** map, help, full screen (iPhone shows the Add to Home Screen tip), settings (sound, vibration, timing help). Labelled Retry pill beside the stones that pulses once stones run out.
 
 **Alpha:** Jonny (2026-10-22) is taking both Still Water and Bloom to alpha. Plan: Claude Doc "Still Water: road to alpha" https://claude.ai/artifact/Cc4xjJrwVcqCbszjsxtsTA, with four phases: Understand, Satisfy, Depth, Alpha ready.
-Phase 1 progress: done = meeting band, missed lanterns pulse, Watch replay, intro ponds with generator features gated by level, one lily pad per hint (skip after 3 fails), par line at level start. Saves from the five-lesson layout migrate (key v3). Pulled forward from phase 3 at Jonny's ask (2026-10-22): moon lanterns, 24 levels, denser late ponds, basic settings. Next = mirror walls (intro level 13), drifting lanterns (intro level 17); then phase 2 (ring crossing sparks, gold slow-down, sky lantern finale) and play data.
+Phase 1 progress: done = meeting band, missed lanterns pulse, Watch replay, intro ponds with generator features gated by level, one lily pad per hint (skip after 3 fails), par line at level start. Saves from the five-lesson layout migrate (key v3). Pulled forward from phase 3 at Jonny's ask (2026-10-22): moon lanterns, 24 levels, denser late ponds, basic settings. Mirror walls done (intro level 13, in most later levels). Next = drifting lanterns (intro level 17); then phase 2 (ring crossing sparks, gold slow-down, sky lantern finale) and play data.
 
 ## Open owner questions
 None open. Answered 2026-10-22: yes to mirror walls, moon lanterns, drifting lanterns; yes to anonymous play data; public link for testers; gold match preview stays as an option, on by default.

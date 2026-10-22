@@ -8,6 +8,7 @@ export const ICONS = {
   gold: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M20 4 36 20 20 36 4 20Z" fill="#ffc23d"/><path d="M20 13 27 20 20 27 13 20Z" fill="#fff4d0"/></svg>`,
   rock: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M9 14 18 7 30 10 34 21 28 32 14 33 6 24Z" fill="#2a3346" stroke="#56637d" stroke-width="2"/></svg>`,
   moon: `<svg viewBox="0 0 40 40" width="40" height="40"><path d="M25 6a14 14 0 1 0 9 22A11 11 0 0 1 25 6Z" fill="#dcdcff"/><circle cx="31" cy="11" r="1.6" fill="#7fe0ff"/></svg>`,
+  wall: `<svg viewBox="0 0 40 40" width="40" height="40"><rect x="17" y="4" width="7" height="32" rx="3" fill="#d6d9e2" stroke="#8a93a8" stroke-width="1.2"/><path d="M6 30 15 20M15 20 6 10" fill="none" stroke="#ffe2b0" stroke-width="2" stroke-linecap="round"/></svg>`,
   ring: `<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="15" fill="none" stroke="#ffe2b0" stroke-width="2.5"/><circle cx="20" cy="20" r="9" fill="none" stroke="#ffe2b0" stroke-width="1" opacity=".4"/></svg>`,
 };
 
@@ -22,6 +23,7 @@ export const POND_CARDS: Record<string, IntroCard> = {
   t3: { icon: ICONS.gold, title: 'Gold lantern', body: 'Needs two ripples touching it at the same moment.' },
   t4: { icon: ICONS.echo, title: 'Echo lantern', body: 'When it lights, it sends out a ripple of its own.' },
   t5: { icon: ICONS.rock, title: 'Rock', body: 'Ripples can’t pass through. Lanterns behind it stay dark.' },
+  t7: { icon: ICONS.wall, title: 'Mirror wall', body: 'Ripples bounce off it, like light off a mirror.' },
   t6: { icon: `${ICONS.moon}${ICONS.echo}`, title: 'Moon lantern', body: 'Sleeps through stone ripples. Only an echo’s ripple wakes it.' },
 };
 
@@ -64,6 +66,10 @@ export class Coach {
         return;
       case 't4':
         this.v.say('Drop one stone on the lily pad and watch');
+        this.v.point(h);
+        return;
+      case 't7':
+        this.v.say('The rock hides a lantern. Drop on the pad.');
         this.v.point(h);
         return;
       case 't6':
@@ -115,6 +121,10 @@ export class Coach {
         this.v.say('Each echo lantern lights the next…');
         this.v.point([]);
         return;
+      case 't7':
+        this.v.say('Watch it bounce off the wall…');
+        this.v.point([]);
+        return;
       case 't6':
         this.v.say('Your ripple passes the moon by…');
         this.v.point([]);
@@ -142,6 +152,7 @@ export class Coach {
         t4: 'One stone, five lanterns.',
         t5: '',
         t6: 'Only the echo’s ripple woke it.',
+        t7: 'A bank shot. The bounce found it.',
       };
       this.v.say(done[pond.id] ?? '');
       return;

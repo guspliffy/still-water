@@ -99,6 +99,22 @@ const TEACHING: PondDef[] = [
     solution: [{ x: 300, y: 570, t: 0 }],
     difficulty: 0,
   },
+  {
+    id: 't7',
+    title: 'Bank shot',
+    lanterns: [
+      { x: 330, y: 420, kind: 'plain' },
+      { x: 200, y: 640, kind: 'plain' },
+      { x: 420, y: 680, kind: 'plain' },
+    ],
+    rocks: [{ x: 315, y: 490, r: 26 }],
+    walls: [{ ax: 400, ay: 370, bx: 400, by: 570 }],
+    par: 1,
+    stones: 3,
+    hints: [{ x: 300, y: 560 }],
+    solution: [{ x: 300, y: 560, t: 0 }],
+    difficulty: 0,
+  },
 ];
 
 /** Lessons before the map teach the basics only: one stone, rings, plain lanterns. */
@@ -108,11 +124,11 @@ export const TUTORIAL: PondDef[] = TEACHING.slice(0, 2);
  * Intro ponds keyed by 0-based level: the first visit to that stop plays its intro once, then
  * the level. Each new idea arrives where it is first used. GDD §7.1.
  */
-export const INTROS: Record<number, PondDef> = { 0: TEACHING[2], 3: TEACHING[3], 6: TEACHING[4], 9: TEACHING[5] };
+export const INTROS: Record<number, PondDef> = { 0: TEACHING[2], 3: TEACHING[3], 6: TEACHING[4], 9: TEACHING[5], 12: TEACHING[6] };
 
 /** Generated ponds only use an idea from the level that introduces it. */
 export function featuresAt(level: number): Features {
-  return { echo: level >= 3, rocks: level >= 6, moon: level >= 9 };
+  return { echo: level >= 3, rocks: level >= 6, moon: level >= 9, walls: level >= 12 };
 }
 
 /** Names for the stops on the map; beyond them the pond opens into endless water. */

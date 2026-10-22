@@ -1,4 +1,4 @@
-import { dist, isOccluded } from '../sim/geometry';
+import { pathLength } from '../sim/geometry';
 import type { Sim, SimEvent } from '../sim/sim';
 import type { Vec } from '../sim/types';
 
@@ -31,19 +31,21 @@ export function computeGoldPreview(sim: Sim, p: Vec): GoldPreview[] {
   const { speed, maxRadius, goldWindow } = sim.p;
   sim.lanterns.forEach((l, i) => {
     if (l.lit || l.def.kind !== 'gold') return;
-    const d = dist(p, l.def);
-    if (d > maxRadius || isOccluded(p, l.def, sim.pond.rocks)) return;
-    const tNew = sim.time + d / speed;
-    let best = Infinity;
-    if (l.windowOpenedAt >= 0) best = tNew - l.windowOpenedAt;
+    // A stone can reach a gold lantern straight and by bounces, and one can pair with another.
+    const mine = sim.pathsTo(p, l.def).filter((d) => d <= maxRadius).map((d) => sim.time + d / speed);
+    if (mine.length === 0) return;
+    const others: number[] = [];
+    if (l.windowOpenedAt >= 0) others.push(l.windowOpenedAt);
     for (const r of sim.ripples) {
-      const dr = dist(r, l.def);
-      if (dr > r.maxR || isOccluded(r, l.def, sim.pond.rocks)) continue;
+      const dr = pathLength({ x: r.sx, y: r.sy }, l.def, r.mirror, sim.pond.rocks, sim.walls);
+      if (dr === null || dr > r.maxR) continue;
       const tArr = r.t0 + dr / speed;
-      if (tArr < sim.time) continue;
-      const off = tNew - tArr;
-      if (Math.abs(off) < Math.abs(best)) best = off;
+      if (tArr >= sim.time) others.push(tArr);
     }
+    let best = Infinity;
+    mine.forEach((tNew, k) => {
+      for (const t of [...others, ...mine.slice(k + 1)]) if (Math.abs(tNew - t) < Math.abs(best)) best = tNew - t;
+    });
     if (!Number.isFinite(best)) return;
     out.push({ lantern: i, offset: best, match: Math.abs(best) <= goldWindow });
   });

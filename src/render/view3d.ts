@@ -37,13 +37,13 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { dist, isOccluded, rng } from '../sim/geometry';
+import { rng } from '../sim/geometry';
 import type { Sim, SimEvent } from '../sim/sim';
 import type { LanternKind, Vec } from '../sim/types';
 import { tuning } from '../tuning';
 import type { GoldPreview, PondRenderer } from './renderer';
-import { grassBlade, makeBush, makeLantern, makeLilyPad, makeRock, toon, type LanternProp } from './props3d';
-import { createWaterMaterial, MARK, MAX_LIGHTS, MAX_MARKS, MAX_RIPPLES, MAX_ROCKS } from './water';
+import { grassBlade, makeBush, makeLantern, makeLilyPad, makeRock, makeWall, toon, type LanternProp } from './props3d';
+import { createWaterMaterial, MARK, MAX_LIGHTS, MAX_MARKS, MAX_RIPPLES, MAX_ROCKS, MAX_WALLS } from './water';
 
 /** Pond units (600 x 900) to scene units. */
 const S = 0.01;
@@ -288,6 +288,18 @@ export class Pond3D implements PondRenderer {
       this.pondGroup.add(rock);
     });
 
+    const walls = sim.walls.slice(0, MAX_WALLS);
+    this.water.uniforms.uWallCount.value = walls.length;
+    walls.forEach((w, i) => {
+      const a = this.toScene({ x: w.ax, y: w.ay });
+      const b = this.toScene({ x: w.bx, y: w.by });
+      this.water.uniforms.uWall.value[i].set(a.x, a.z, b.x, b.z);
+      const mesh = makeWall(Math.hypot(b.x - a.x, b.z - a.z), i);
+      mesh.position.set((a.x + b.x) / 2, 0, (a.z + b.z) / 2);
+      mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+      this.pondGroup.add(mesh);
+    });
+
     sim.pond.hints.forEach((h, i) => {
       const pad = makeLilyPad(0.24, i % 2 === 0, i + 3);
       pad.position.copy(this.toScene(h));
@@ -421,7 +433,7 @@ export class Pond3D implements PondRenderer {
       const k = rad / r.maxR;
       const a = (1 - k ** tuning.ripple.fadePower) * (r.source === 'echo' ? 0.85 : 1);
       u.uRip.value[n].set((r.x - tuning.pond.width / 2) * S, (r.y - tuning.pond.height / 2) * S, rad * S, a);
-      u.uRipB.value[n].set(r.maxR * S, r.source === 'echo' ? 1 : 0, 0, 0);
+      u.uRipB.value[n].set(r.maxR * S, r.source === 'echo' ? 1 : 0, r.mirror + 1, 0);
       n++;
     }
     u.uRipCount.value = n;
@@ -493,7 +505,7 @@ export class Pond3D implements PondRenderer {
         sim.lanterns.forEach((l, i) => {
           // Gold has its own preview, and a stone ring never wakes a moon lantern.
           if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
-          if (dist(pp, l.def) <= sim.p.maxRadius && !isOccluded(pp, l.def, sim.pond.rocks)) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
+          if (sim.reaches(pp, l.def)) marks.push([this.lanterns[i].pos.x, this.lanterns[i].pos.z, MARK.reachOk, 1]);
         });
         for (const g of this.goldPreview) {
           const l = this.lanterns[g.lantern];

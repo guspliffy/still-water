@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { dist, isOccluded, rng, rockShadow } from '../sim/geometry';
+import { rng, rockShadow } from '../sim/geometry';
 import type { Sim, SimEvent } from '../sim/sim';
 import type { LanternKind, PondDef, Vec } from '../sim/types';
 import { tuning } from '../tuning';
@@ -177,6 +177,12 @@ export class PondView implements PondRenderer {
 
     for (const h of pond.hints) this.staticLayer.addChild(this.lilyPad(h));
     pond.rocks.forEach((r, i) => this.staticLayer.addChild(this.rock(r.x, r.y, r.r, i)));
+    for (const w of pond.walls ?? []) {
+      const g = new Graphics();
+      g.moveTo(w.ax, w.ay).lineTo(w.bx, w.by).stroke({ width: 12, color: 0xd9dce4, cap: 'round' });
+      g.moveTo(w.ax, w.ay).lineTo(w.bx, w.by).stroke({ width: 3, color: 0xffffff, alpha: 0.8, cap: 'round' });
+      this.staticLayer.addChild(g);
+    }
 
     this.lanterns = pond.lanterns.map((def, i) => {
       const root = new Container();
@@ -297,6 +303,8 @@ export class PondView implements PondRenderer {
     const sim = this.sim;
     const { lineWidth, glowWidth, fadePower } = tuning.ripple;
     for (const r of sim.ripples) {
+      // The flat view only draws real rings; bounced rings show in 3D.
+      if (r.mirror >= 0) continue;
       const rad = sim.radiusAt(r, now);
       if (rad <= 0 || rad > r.maxR) continue;
       const k = rad / r.maxR;
@@ -411,7 +419,7 @@ export class PondView implements PondRenderer {
     if (!ok) return;
     this.sim.lanterns.forEach((l) => {
       if (l.lit || l.def.kind === 'gold' || l.def.kind === 'moon') return;
-      if (dist(p, l.def) <= R && !isOccluded(p, l.def, this.sim.pond.rocks)) {
+      if (this.sim.reaches(p, l.def)) {
         g.circle(l.def.x, l.def.y, LANTERN_R + 7).stroke({ width: 1.5, color: COLORS.warm, alpha: 0.45 });
       }
     });

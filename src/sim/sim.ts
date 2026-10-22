@@ -1,5 +1,5 @@
-import { dist, insidePond, isOccluded } from './geometry';
-import type { LanternDef, PondDef, SimParams, Vec } from './types';
+import { allPaths, dist, distToSegment, insidePond, mirrorPoint, pathLength, sideOf } from './geometry';
+import type { LanternDef, PondDef, SimParams, Vec, WallDef } from './types';
 
 export interface Ripple {
   id: number;
@@ -11,6 +11,11 @@ export interface Ripple {
   source: 'stone' | 'echo';
   /** Lantern that emitted this ring, for echoes. */
   lantern: number;
+  /** -1 for a real ring; otherwise the wall this ring bounced off (x, y is then the mirror image). */
+  mirror: number;
+  /** Where the ring really started (equal to x, y for a real ring). */
+  sx: number;
+  sy: number;
 }
 
 export interface LanternState {
@@ -45,6 +50,7 @@ interface Hit {
 export class Sim {
   readonly pond: PondDef;
   readonly p: SimParams;
+  readonly walls: WallDef[];
   time = 0;
   stonesLeft: number;
   ripples: Ripple[] = [];
@@ -56,6 +62,7 @@ export class Sim {
   constructor(pond: PondDef, params: SimParams) {
     this.pond = pond;
     this.p = params;
+    this.walls = pond.walls ?? [];
     this.stonesLeft = pond.stones;
     this.lanterns = pond.lanterns.map((def) => ({ def, lit: false, litAt: -1, windowOpenedAt: -1, windowRipple: -1 }));
   }
@@ -67,7 +74,18 @@ export class Sim {
   /** Whether a stone may be dropped here: inside the pond and not on a rock. */
   canDropAt(p: Vec): boolean {
     if (!insidePond(p, this.p.width, this.p.height, this.p.cornerRadius, 6)) return false;
+    if (this.walls.some((w) => distToSegment(p, { x: w.ax, y: w.ay }, { x: w.bx, y: w.by }) < 12)) return false;
     return !this.pond.rocks.some((r) => dist(p, r) < r.r + 4);
+  }
+
+  /** Path lengths of every way a ring from src reaches `to`, straight or bounced. */
+  pathsTo(src: Vec, to: Vec): number[] {
+    return allPaths(src, to, this.pond.rocks, this.walls);
+  }
+
+  /** Whether a stone at src would reach `to` before its ring fades. */
+  reaches(src: Vec, to: Vec): boolean {
+    return this.pathsTo(src, to).some((d) => d <= this.p.maxRadius);
   }
 
   dropStone(p: Vec): Ripple | null {
@@ -111,9 +129,15 @@ export class Sim {
     return this.ripples.length > 0 || this.lanterns.some((l) => l.windowOpenedAt >= 0);
   }
 
+  /** Adds a ring, plus its bounce off every wall it can reach. Returns the real ring. */
   private addRipple(p: Vec, t0: number, maxR: number, source: Ripple['source'], lantern: number): Ripple {
-    const r: Ripple = { id: this.nextId++, x: p.x, y: p.y, t0, maxR, source, lantern };
+    const r: Ripple = { id: this.nextId++, x: p.x, y: p.y, t0, maxR, source, lantern, mirror: -1, sx: p.x, sy: p.y };
     this.ripples.push(r);
+    this.walls.forEach((w, m) => {
+      if (sideOf(p, w) === 0 || distToSegment(p, { x: w.ax, y: w.ay }, { x: w.bx, y: w.by }) >= maxR) return;
+      const img = mirrorPoint(p, w);
+      this.ripples.push({ id: this.nextId++, x: img.x, y: img.y, t0, maxR, source, lantern, mirror: m, sx: p.x, sy: p.y });
+    });
     return r;
   }
 
@@ -126,11 +150,10 @@ export class Sim {
       if (l.lit) return;
       // Moon lanterns sleep through stone rings; only an echo's ring wakes them.
       if (l.def.kind === 'moon' && rip.source !== 'echo') return;
-      const d = dist(rip, l.def);
+      const d = pathLength({ x: rip.sx, y: rip.sy }, l.def, rip.mirror, this.pond.rocks, this.walls);
+      if (d === null) return;
       // Half-open interval so a crossing on a step boundary counts exactly once.
-      if (d > rA && d <= rB && !isOccluded(rip, l.def, this.pond.rocks)) {
-        out.push({ t: rip.t0 + d / this.p.speed, lantern: i, ripple: rip });
-      }
+      if (d > rA && d <= rB) out.push({ t: rip.t0 + d / this.p.speed, lantern: i, ripple: rip });
       if (d === 0 && rA === 0) out.push({ t: rip.t0, lantern: i, ripple: rip });
     });
   }

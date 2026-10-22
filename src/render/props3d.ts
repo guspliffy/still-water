@@ -1,5 +1,6 @@
 import {
   BackSide,
+  BoxGeometry,
   CatmullRomCurve3,
   TubeGeometry,
   CanvasTexture,
@@ -463,6 +464,36 @@ function lotusLantern(): LanternProp {
   body.add(crystal);
   root.add(body);
   return { root, body, glowMats: [crystalMat, petalMat], spinner: crystal, lightY: 0.15 };
+}
+
+/**
+ * Mirror wall: a low run of pale dressed stones capped with a polished silver strip, so it reads
+ * as both an obstacle (light grey, easy to spot) and something rings bounce off. Lies along x.
+ */
+export function makeWall(length: number, seed: number): Group {
+  const g = new Group();
+  const rand = rng(seed * 13 + 7);
+  const n = Math.max(2, Math.round(length / 0.14));
+  const blockLen = length / n;
+  const stone = toon(0xd9dce4);
+  for (let i = 0; i < n; i++) {
+    const h = 0.11 + rand() * 0.03;
+    const b = outlined(new Mesh(new BoxGeometry(blockLen * 0.94, h, 0.1), stone), 0.005);
+    b.position.set(-length / 2 + blockLen * (i + 0.5), h / 2 - 0.02, (rand() - 0.5) * 0.008);
+    b.rotation.y = (rand() - 0.5) * 0.04;
+    g.add(b);
+  }
+  const silver = toon(0xe4ebf7, { emissive: new Color(0.7, 0.78, 0.95), emissiveIntensity: 0.06 });
+  const cap = outlined(new Mesh(new BoxGeometry(length + 0.02, 0.025, 0.06), silver), 0.004);
+  cap.position.y = 0.15;
+  g.add(cap);
+  // Rounded end posts.
+  for (const x of [-length / 2, length / 2]) {
+    const post = outlined(new Mesh(new CylinderGeometry(0.055, 0.06, 0.19, 12), stone), 0.005);
+    post.position.set(x, 0.075, 0);
+    g.add(post);
+  }
+  return g;
 }
 
 /** Lily pad with real thickness and its notch; optionally with a small water lily. */

@@ -1,4 +1,4 @@
-import type { RockDef, Vec } from './types';
+import type { RockDef, Vec, WallDef } from './types';
 
 export function dist(a: Vec, b: Vec): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
@@ -21,6 +21,72 @@ export function isOccluded(from: Vec, to: Vec, rocks: readonly RockDef[]): boole
     if (distToSegment(r, from, to) < r.r) return true;
   }
   return false;
+}
+
+/** Where segment pq crosses segment ab, as a fraction along pq, or -1 if it doesn't. */
+export function crossAt(p: Vec, q: Vec, ax: number, ay: number, bx: number, by: number): number {
+  const rx = q.x - p.x;
+  const ry = q.y - p.y;
+  const sx = bx - ax;
+  const sy = by - ay;
+  const den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return -1;
+  const qx = ax - p.x;
+  const qy = ay - p.y;
+  const t = (qx * sy - qy * sx) / den;
+  const u = (qx * ry - qy * rx) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : -1;
+}
+
+const crossesWall = (p: Vec, q: Vec, w: WallDef) => crossAt(p, q, w.ax, w.ay, w.bx, w.by) >= 0;
+
+/** Signed side of the wall's line that p lies on (0 = on the line). */
+export function sideOf(p: Vec, w: WallDef): number {
+  return Math.sign((w.bx - w.ax) * (p.y - w.ay) - (w.by - w.ay) * (p.x - w.ax));
+}
+
+/** p reflected across the wall's line: where a bounced ring seems to come from. */
+export function mirrorPoint(p: Vec, w: WallDef): Vec {
+  const dx = w.bx - w.ax;
+  const dy = w.by - w.ay;
+  const t = ((p.x - w.ax) * dx + (p.y - w.ay) * dy) / (dx * dx + dy * dy);
+  const fx = w.ax + t * dx;
+  const fy = w.ay + t * dy;
+  return { x: 2 * fx - p.x, y: 2 * fy - p.y };
+}
+
+/** True when a rock or a wall (other than `skip`) stands between from and to. */
+export function blocked(from: Vec, to: Vec, rocks: readonly RockDef[], walls: readonly WallDef[], skip = -1): boolean {
+  if (isOccluded(from, to, rocks)) return true;
+  return walls.some((w, i) => i !== skip && crossesWall(from, to, w));
+}
+
+/**
+ * How far a ring from src travels to reach `to`: straight (mirror -1), or bounced once off
+ * walls[mirror]. Null when that path is blocked or doesn't exist. Ring position stays exact:
+ * a bounced ring is a ring centred on src's mirror image, seen only on src's side of the wall.
+ */
+export function pathLength(src: Vec, to: Vec, mirror: number, rocks: readonly RockDef[], walls: readonly WallDef[]): number | null {
+  if (mirror < 0) return blocked(src, to, rocks, walls) ? null : dist(src, to);
+  const w = walls[mirror];
+  const s = sideOf(src, w);
+  if (s === 0 || sideOf(to, w) !== s) return null;
+  const img = mirrorPoint(src, w);
+  const t = crossAt(img, to, w.ax, w.ay, w.bx, w.by);
+  if (t < 0) return null;
+  const hit = { x: img.x + (to.x - img.x) * t, y: img.y + (to.y - img.y) * t };
+  if (blocked(src, hit, rocks, walls, mirror) || blocked(hit, to, rocks, walls, mirror)) return null;
+  return dist(img, to);
+}
+
+/** Every way a ring from src reaches `to` (straight and each bounce), as path lengths. */
+export function allPaths(src: Vec, to: Vec, rocks: readonly RockDef[], walls: readonly WallDef[]): number[] {
+  const out: number[] = [];
+  for (let m = -1; m < walls.length; m++) {
+    const d = pathLength(src, to, m, rocks, walls);
+    if (d !== null) out.push(d);
+  }
+  return out;
 }
 
 /**

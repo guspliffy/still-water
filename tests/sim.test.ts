@@ -106,6 +106,24 @@ describe('sim', () => {
     expect(runFor(withEcho, 6).at(-1)?.type).toBe('complete');
   });
 
+  it('mirror walls block rings and bounce them back once', () => {
+    const walls = [{ ax: 200, ay: 450, bx: 400, by: 450 }];
+    const behind = new Sim(pond({ stones: 1, walls, lanterns: [{ x: 300, y: 350, kind: 'plain' }] }), sp);
+    behind.dropStone({ x: 300, y: 550 });
+    expect(runFor(behind, 4).some((e) => e.type === 'stilled')).toBe(true);
+    // A lantern behind a rock is reached only by the bounce, later than a straight ring would.
+    const bank = INTROS[12];
+    const sim = new Sim(bank, sp);
+    sim.dropStone(bank.solution[0]);
+    const ev = runFor(sim, 5);
+    expect(ev.at(-1)?.type).toBe('complete');
+    const lit = ev.find((e) => e.type === 'light' && e.lantern === 0)!;
+    expect(lit.t).toBeGreaterThan(Math.hypot(30, 140) / sp.speed + 0.3);
+    const noWall = new Sim({ ...bank, walls: [] }, sp);
+    noWall.dropStone(bank.solution[0]);
+    expect(runFor(noWall, 5).some((e) => e.type === 'light' && e.lantern === 0)).toBe(false);
+  });
+
   it('runs out of stones into a calm stilled state', () => {
     const sim = new Sim(pond({ stones: 1, lanterns: [{ x: 300, y: 100, kind: 'plain' }] }), sp);
     sim.dropStone({ x: 300, y: 800 });
@@ -146,6 +164,7 @@ describe('ponds', () => {
         if (level < 3) expect(p.lanterns.some((l) => l.kind === 'echo')).toBe(false);
         if (level < 6) expect(p.rocks.length).toBe(0);
         if (level < 9) expect(p.lanterns.some((l) => l.kind === 'moon')).toBe(false);
+        if (level < 12) expect(p.walls ?? []).toEqual([]);
       }
     }
   });

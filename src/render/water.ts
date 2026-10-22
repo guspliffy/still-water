@@ -1,9 +1,10 @@
 import { ShaderMaterial, Vector3, Vector4 } from 'three';
 
 export const MAX_RIPPLES = 24;
-export const MAX_ROCKS = 4;
+export const MAX_ROCKS = 8;
 export const MAX_LIGHTS = 24;
 export const MAX_MARKS = 24;
+export const MAX_WALLS = 3;
 
 /** Mark types drawn on the water surface by the shader. */
 export const MARK = {
@@ -34,6 +35,7 @@ const fragment = /* glsl */ `
 #define MAX_ROCK ${MAX_ROCKS}
 #define MAX_LIGHT ${MAX_LIGHTS}
 #define MAX_MARK ${MAX_MARKS}
+#define MAX_WALL ${MAX_WALLS}
 #define PI 3.14159265
 
 uniform float uTime;
@@ -41,7 +43,9 @@ uniform vec3 uCam;
 uniform vec3 uPond;          // half width, half height, corner radius
 uniform int uRipCount;
 uniform vec4 uRip[MAX_RIP];  // x, z, radius, alpha
-uniform vec4 uRipB[MAX_RIP]; // maxR, kind (0 stone, 1 echo)
+uniform vec4 uRipB[MAX_RIP]; // maxR, kind (0 stone, 1 echo), mirror wall + 1 (0 = real ring)
+uniform int uWallCount;
+uniform vec4 uWall[MAX_WALL]; // ax, az, bx, bz
 uniform int uRockCount;
 uniform vec3 uRock[MAX_ROCK];
 uniform int uLightCount;
@@ -63,13 +67,51 @@ float sdRoundBox(vec2 p, vec2 b, float r) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
 }
 
-bool shadowed(vec2 c, vec2 p) {
+// Where segment pq crosses segment ab, as a fraction along pq, or -1.
+float crossAt(vec2 p, vec2 q, vec2 a, vec2 b) {
+  vec2 r = q - p;
+  vec2 s = b - a;
+  float den = r.x * s.y - r.y * s.x;
+  if (abs(den) < 1e-7) return -1.0;
+  vec2 ap = a - p;
+  float t = (ap.x * s.y - ap.y * s.x) / den;
+  float u = (ap.x * r.y - ap.y * r.x) / den;
+  return (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) ? t : -1.0;
+}
+
+// A rock or a wall (other than skip) between c and p.
+bool shadowed(vec2 c, vec2 p, int skip) {
   for (int k = 0; k < MAX_ROCK; k++) {
     if (k >= uRockCount) break;
     vec3 r = uRock[k];
     vec2 ab = p - c;
     float t = clamp(dot(r.xy - c, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
     if (length(c + ab * t - r.xy) < r.z) return true;
+  }
+  for (int k = 0; k < MAX_WALL; k++) {
+    if (k >= uWallCount) break;
+    if (k != skip && crossAt(c, p, uWall[k].xy, uWall[k].zw) >= 0.0) return true;
+  }
+  return false;
+}
+
+// Whether ring i shows at p. A bounced ring is centred on the mirror image of its source; it
+// shows only on the source's side of its wall, along paths that really touch the wall.
+bool ripVisible(int i, vec2 p) {
+  vec2 c = uRip[i].xy;
+  int m = int(uRipB[i].z + 0.5) - 1;
+  if (m < 0) return !shadowed(c, p, -1);
+  for (int k = 0; k < MAX_WALL; k++) {
+    if (k != m) continue;
+    vec2 wa = uWall[k].xy;
+    vec2 wb = uWall[k].zw;
+    vec2 n = normalize(vec2(wa.y - wb.y, wb.x - wa.x));
+    vec2 src = c - 2.0 * dot(c - wa, n) * n;
+    if (dot(p - wa, n) * dot(src - wa, n) <= 0.0) return false;
+    float t = crossAt(c, p, wa, wb);
+    if (t < 0.0) return false;
+    vec2 hit = c + (p - c) * t;
+    return !shadowed(src, hit, m) && !shadowed(hit, p, m);
   }
   return false;
 }
@@ -108,7 +150,7 @@ void main() {
     float d = length(dv);
     float u = d - a.z;
     if (u > 0.25 || u < -0.9) continue;
-    if (shadowed(a.xy, p)) continue;
+    if (!ripVisible(i, p)) continue;
     vec2 dir = dv / max(d, 1e-4);
     float amp = a.w;
     // Wave packet trailing behind the bright front: a few crests that decay inward.
@@ -206,14 +248,14 @@ void main() {
 
     // Meeting band: where the ring you'd drop now meets each ring already moving. Inside the
     // soft band both arrive within the gold window; the bright line is "exactly together".
-    if (uMeet > 0.5 && d < uPreview.z && !shadowed(uPreview.xy, p)) {
+    if (uMeet > 0.5 && d < uPreview.z && !shadowed(uPreview.xy, p, -1)) {
       for (int i = 0; i < MAX_RIP; i++) {
         if (i >= uRipCount) break;
         vec4 a = uRip[i];
         float maxR = uRipB[i].x;
         float di = length(p - a.xy);
         if (a.z >= maxR || di < a.z || di > maxR) continue;
-        if (shadowed(a.xy, p)) continue;
+        if (!ripVisible(i, p)) continue;
         float f = d - di + a.z;
         float band = 1.0 - smoothstep(uWinW * 0.75, uWinW, abs(f));
         float fade = 1.0 - smoothstep(maxR * 0.8, maxR, di);
@@ -243,6 +285,8 @@ export function createWaterMaterial(): ShaderMaterial {
       uRipB: { value: Array.from({ length: MAX_RIPPLES }, () => new Vector4()) },
       uRockCount: { value: 0 },
       uRock: { value: Array.from({ length: MAX_ROCKS }, () => new Vector3()) },
+      uWallCount: { value: 0 },
+      uWall: { value: Array.from({ length: MAX_WALLS }, () => new Vector4()) },
       uLightCount: { value: 0 },
       uLight: { value: Array.from({ length: MAX_LIGHTS }, () => new Vector4()) },
       uLightCol: { value: Array.from({ length: MAX_LIGHTS }, () => new Vector3()) },
