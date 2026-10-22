@@ -181,7 +181,8 @@ void main() {
   deep = mix(deep, deep * vec3(0.85, 1.15, 1.1), patchy * 0.6);
   vec3 sky = mix(vec3(0.012, 0.03, 0.05), vec3(0.03, 0.07, 0.12), clamp(R.y, 0.0, 1.0));
   float md = max(dot(R, uMoonDir), 0.0);
-  float moon = pow(md, 900.0) * 1.1 + pow(md, 60.0) * 0.025;
+  // The moon sits just above the frame: a sharp glint, a soft halo, and a broad sheen on the far water.
+  float moon = pow(md, 900.0) * 1.1 + pow(md, 60.0) * 0.025 + pow(md, 6.0) * 0.045;
   vec3 col = mix(deep, sky, fres) + vec3(0.75, 0.82, 1.0) * moon;
 
   // Lantern light: a pool on the water plus a specular glint that ripples break into streaks.

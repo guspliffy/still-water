@@ -262,6 +262,8 @@ function paperLantern(): LanternProp {
   lidGeo.scale(1, 0.4, 1);
   const lid = outlined(new Mesh(lidGeo, toon(0x9a6a45)), 0.005);
   lid.position.y = H + 0.015;
+  // Tops are 20% larger so each kind's shape reads from the steep phone camera.
+  lid.scale.setScalar(1.2);
   body.add(lid);
   const knob = new Mesh(new SphereGeometry(0.014, 10, 8), toon(0xb2453a));
   knob.position.y = H + 0.045;
@@ -309,6 +311,7 @@ function pavilionLantern(): LanternProp {
   const roof = outlined(new Mesh(new LatheGeometry(roofProf, 6), toon(0x4f8aa0, { side: DoubleSide })));
   roof.position.y = 0.225;
   roof.rotation.y = Math.PI / 6;
+  roof.scale.set(1.2, 1.1, 1.2);
   body.add(roof);
   // Darker ridges from the peak to each upturned corner, so the curve reads even from above.
   const ridgeMat = toon(0x2f5f74);
@@ -371,25 +374,27 @@ function moonLantern(): LanternProp {
   const base = outlined(new Mesh(new CylinderGeometry(0.12, 0.14, 0.05, 14), toon(0x7d8499)));
   base.position.y = 0.02;
   root.add(base);
-  const post = outlined(new Mesh(new CylinderGeometry(0.018, 0.024, 0.16, 8), toon(0x6c7287)), 0.004);
-  post.position.y = 0.12;
+  // A tall post lifts the crescent clear of the water so it reads as a moon, not a blob.
+  const post = outlined(new Mesh(new CylinderGeometry(0.018, 0.024, 0.28, 8), toon(0x6c7287)), 0.004);
+  post.position.y = 0.18;
   root.add(post);
 
   const body = new Group();
-  body.position.y = 0.34;
+  body.position.y = 0.44;
   const geo = new ExtrudeGeometry(crescentShape(0.17, 0.075, 0.055, 0.14), { depth: 0.035, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.01, bevelSegments: 3, curveSegments: 24 });
   geo.center();
   // Muted lilac while asleep, so waking up to bright moonlight is a clear change.
   const moonMat = toon(0xb4b6d4, { emissive: new Color(0.85, 0.86, 1.0), emissiveIntensity: 0.05 });
   const crescent = outlined(new Mesh(geo, moonMat), 0.008);
-  // Opening up and to the right, tipped back a little so it reads from the tilted camera.
-  crescent.rotation.set(-0.3, 0, -0.45);
+  // Opening to the right and tipped toward the camera, so its face reads from above.
+  crescent.rotation.set(-1.0, 0, -0.45);
+  crescent.scale.setScalar(1.2);
   body.add(crescent);
   const bead = new Mesh(new SphereGeometry(0.016, 10, 8), toon(0xeef3ff, { emissive: new Color(0.7, 0.78, 0.95), emissiveIntensity: 0.6 }));
-  bead.position.set(0.13, 0.13, 0.02);
-  body.add(bead);
+  bead.position.set(0.066, 0.163, 0.058);
+  crescent.add(bead);
   root.add(body);
-  return { root, body, glowMats: [moonMat], spinner: null, lightY: 0.34 };
+  return { root, body, glowMats: [moonMat], spinner: null, lightY: 0.44 };
 }
 
 /** Petal with a cream base fading to pink at the tip (vertex colours). */
@@ -427,6 +432,7 @@ function lotusLantern(): LanternProp {
     for (let i = 0; i < n; i++) {
       const pivot = new Object3D();
       pivot.rotation.y = (i / n) * Math.PI * 2 + offset;
+      pivot.scale.set(1.2, 1, 1.2);
       const p = new Mesh(geo, petalMat);
       p.rotation.x = -tilt;
       pivot.add(p);
@@ -568,16 +574,37 @@ export function makeRock(radius: number, seed: number, outline = 1): Mesh {
 }
 
 /** Soft round bush made of a few overlapping blobs. */
-export function makeBush(seed: number, scale: number): Group {
+export function makeBush(seed: number, scale: number, shade = 1): Group {
   const g = new Group();
   const rand = rng(seed * 5 + 1);
-  const mat = toon(new Color().setHSL(0.32 + rand() * 0.06, 0.32, 0.22 + rand() * 0.06));
+  const mat = toon(new Color().setHSL(0.32 + rand() * 0.06, 0.32, (0.22 + rand() * 0.06) * shade));
   for (let i = 0; i < 4; i++) {
     const r = (0.18 + rand() * 0.14) * scale;
     const b = outlined(new Mesh(new IcosahedronGeometry(r, 2), mat), 0.01);
     b.position.set((rand() - 0.5) * 0.35 * scale, r * 0.7, (rand() - 0.5) * 0.35 * scale);
     b.scale.y = 0.85;
     g.add(b);
+  }
+  return g;
+}
+
+/** A dark pine seen against the night: a thin trunk and stacked, slightly ragged cones. */
+export function makePine(seed: number, height: number): Group {
+  const g = new Group();
+  const rand = rng(seed * 17 + 3);
+  const trunk = new Mesh(new CylinderGeometry(0.035, 0.06, height * 0.35, 6), toon(0x2a2018));
+  trunk.position.y = height * 0.17;
+  g.add(trunk);
+  const needles = toon(0x1f3a30);
+  const tiers = 5;
+  for (let i = 0; i < tiers; i++) {
+    const k = i / (tiers - 1);
+    const r = height * (0.3 - k * 0.2) * (0.9 + rand() * 0.2);
+    const h = height * 0.32;
+    const cone = new Mesh(new ConeGeometry(r, h, 7), needles);
+    cone.position.set((rand() - 0.5) * 0.04, height * (0.25 + k * 0.6), (rand() - 0.5) * 0.04);
+    cone.rotation.y = rand() * 6;
+    g.add(cone);
   }
   return g;
 }

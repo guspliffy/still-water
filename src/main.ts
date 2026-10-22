@@ -1,5 +1,5 @@
 import { Audio, haptic } from './audio/audio';
-import { afterComplete, afterSkip, difficultyFor, freshProgress, isLesson, levelOf, loadProgress, saveProgress, starsFor, tierAt, totalStars, type Progress } from './progress';
+import { afterComplete, afterSkip, difficultyFor, freshProgress, isLesson, levelOf, loadProgress, saveProgress, starsFor, tierAt, type Progress } from './progress';
 import type { PondRenderer } from './render/renderer';
 import { computeGoldPreview } from './render/renderer';
 import { INTROS, LEVEL_NAMES, pondAt, TUTORIAL } from './sim/levels';
@@ -83,11 +83,8 @@ async function start() {
     const tut = isLesson(progress.index);
     const n = levelOf(progress.index) + 1;
     // Outside the lessons the level name is the door to the map (GDD §7).
-    $('title').innerHTML = tut ? `Lesson <b>${progress.index + 1}</b> · ${pond.title}` : `Level <b>${n}</b> · ${pond.title}<span class="door-mark">›</span>`;
+    $('title').innerHTML = tut ? `<small>Lesson ${progress.index + 1}</small>${pond.title}` : `<small>${n}</small>${pond.title}<span class="door-mark">›</span>`;
     $('title').classList.toggle('door', !tut);
-    $('mood').textContent = `★ ${totalStars(progress)}`;
-    $('mood').style.display = tut ? 'none' : '';
-    $('stones-caption').textContent = `stones · par ${pond.par}`;
     relayout();
     coach.start(pond, progress.index, TUTORIAL.length, throws === 0);
     if (progress.index === 0 && !welcomed) {
